@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/product_model.dart';
 import '../../domain/repositories/product_repository.dart';
+import '../../domain/repositories/home_banner_repository.dart';
+import '../widgets/home_promo_carousel.dart';
 import '../widgets/product_card_widget.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = 'Semua';
   final ProductRepository _productRepository = ProductRepository();
+  final HomeBannerRepository _bannerRepository = HomeBannerRepository();
 
   Widget _buildCategoryChip(String label) {
     bool isSelected = _selectedCategory == label;
@@ -134,37 +137,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // 1. Promo Banner
+                // 1. Promo Banner (admin, max 3 — carousel jika > 1)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.asset(
-                        'assets/images/promo.png',
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          height: 140,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppTheme.primaryColor,
-                                AppTheme.primaryColor.withValues(alpha: 0.8),
-                              ],
-                            ),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'PROMO BANNER',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                    child: FutureBuilder<List<String>>(
+                      future: _bannerRepository.fetchBannerUrls(),
+                      builder: (context, snap) {
+                        return HomePromoCarousel(
+                          imageUrls: snap.data ?? const [],
+                        );
+                      },
                     ),
                   ),
                 ),

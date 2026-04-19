@@ -8,6 +8,7 @@ class CartItemModel {
   final String? variation;
   final ProductModel? product;
   bool isSelected;
+  final bool isRental;
 
   CartItemModel({
     required this.id,
@@ -17,6 +18,7 @@ class CartItemModel {
     this.variation,
     this.product,
     this.isSelected = false,
+    this.isRental = false,
   });
 
   factory CartItemModel.fromMap(Map<String, dynamic> map) {
@@ -29,6 +31,7 @@ class CartItemModel {
       product: map['products'] != null
           ? ProductModel.fromMap(map['products'])
           : null,
+      isRental: map['is_rental'] ?? false,
     );
   }
 
@@ -38,8 +41,14 @@ class CartItemModel {
       'product_id': productId,
       'quantity': quantity,
       'variation': variation,
+      'is_rental': isRental,
     };
   }
 
-  int get totalPrice => (product?.price ?? 0) * quantity;
+  int get totalPrice {
+    if (isRental && product != null) {
+      return product!.price + (product!.deposit * quantity);
+    }
+    return (product?.price ?? 0) * quantity;
+  }
 }

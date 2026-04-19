@@ -37,6 +37,9 @@ enum ConfirmActionVariant {
 
   /// Pembatalan pesanan - ikon close/cancel, aksen merah.
   cancelOrder,
+
+  /// Tambah ke keranjang - ikon shopping_cart, aksen kuning.
+  addToCart,
 }
 
 class _Preset {
@@ -170,6 +173,17 @@ _Preset _presetFor(ConfirmActionVariant variant) {
         iconBackgroundColor: const Color(0xFFFFE4E6),
         iconColor: const Color(0xFFDC2626),
         confirmBackgroundColor: const Color(0xFFDC2626),
+      );
+    case ConfirmActionVariant.addToCart:
+      return _Preset(
+        title: 'Masukkan Keranjang?',
+        message: 'Apakah Anda yakin ingin memasukkan produk ini ke keranjang?',
+        confirmLabel: 'Masukkan',
+        icon: Icons.shopping_cart_rounded,
+        iconBackgroundColor: const Color(0xFFFFF4CC),
+        iconColor: const Color(0xFFCA8A04),
+        confirmBackgroundColor: const Color(0xFFFFCC00),
+        confirmForegroundColor: AppTheme.textColor,
       );
     case ConfirmActionVariant.custom:
       return _Preset(

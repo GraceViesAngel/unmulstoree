@@ -24,7 +24,8 @@ class ProductModel {
     required this.price,
     required this.rating,
     this.stock = 24,
-    this.description = 'Kaos resmi dengan bahan cotton combed premium, nyaman digunakan untuk aktivitas sehari-hari.',
+    this.description =
+        'Kaos resmi dengan bahan cotton combed premium, nyaman digunakan untuk aktivitas sehari-hari.',
     this.isRentable = false,
     this.category,
     this.deposit = 0,
@@ -109,8 +110,10 @@ final List<ProductModel> dummyProducts = [
     isRentable: true,
     deposit: 50000,
     rentalDuration: 3,
-    description: 'Toga wisuda resmi Universitas Mulawarman dengan bahan nyaman dan standar akademik.',
-    specifications: 'Bahan: Bestway Premium, Warna: Hitam Hitam, Set: Topa + Jubah',
+    description:
+        'Toga wisuda resmi Universitas Mulawarman dengan bahan nyaman dan standar akademik.',
+    specifications:
+        'Bahan: Bestway Premium, Warna: Hitam Hitam, Set: Topa + Jubah',
     sizeGuide: 'S: 150-160cm, M: 160-170cm, L: 170-180cm',
     sizes: ['S', 'M', 'L', 'XL'],
   ),

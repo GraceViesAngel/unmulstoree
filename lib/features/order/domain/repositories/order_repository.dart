@@ -19,7 +19,11 @@ class OrderRepository {
           .eq('user_id', userId);
 
       if (isRental != null) {
-        query = query.eq('is_rental', isRental);
+        if (isRental) {
+          query = query.eq('is_rental', true);
+        } else {
+          query = query.or('is_rental.is.null,is_rental.eq.false');
+        }
       }
 
       final response = await query.order('created_at', ascending: false);
@@ -62,6 +66,7 @@ class OrderRepository {
     int deposit = 0,
     int rentalDuration = 0,
     int lateFee = 0,
+    int shippingCost = 0,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -75,12 +80,13 @@ class OrderRepository {
         'user_id': userId,
         'order_id_display': orderIdDisplay,
         'status': 'Menunggu Verifikasi',
-        'total_price': (price * quantity) + deposit,
+        'total_price': (price * quantity) + deposit + shippingCost,
         'is_rental': isRental,
         'payment_method': paymentMethod,
         'deposit': deposit,
         'rental_duration': rentalDuration,
         'late_fee': lateFee,
+        'shipping_cost': shippingCost,
       };
 
       final orderResponse = await _supabase
@@ -114,6 +120,7 @@ class OrderRepository {
     int deposit = 0,
     int rentalDuration = 0,
     int lateFee = 0,
+    int shippingCost = 0,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -133,12 +140,13 @@ class OrderRepository {
         'user_id': userId,
         'order_id_display': orderIdDisplay,
         'status': 'Menunggu Verifikasi',
-        'total_price': totalPrice + deposit,
+        'total_price': totalPrice + deposit + shippingCost,
         'is_rental': isRental,
         'payment_method': paymentMethod,
         'deposit': deposit,
         'rental_duration': rentalDuration,
         'late_fee': lateFee,
+        'shipping_cost': shippingCost,
       };
 
       final orderResponse = await _supabase

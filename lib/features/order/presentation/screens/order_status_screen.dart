@@ -121,6 +121,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     final itemCount = _order!.items?.length ?? 1;
     final paymentMethod = _order!.paymentMethod;
     final isCod = paymentMethod == 'COD';
+    final isRejected = _order!.status == 'Ditolak';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -151,9 +152,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isRental && _order!.status == 'Dalam Masa Sewa')
+            if (isRejected) _buildVerificationRejectedBanner(),
+            if (!isRejected && isRental && _order!.status == 'Dalam Masa Sewa')
               ..._buildActiveRentalCards()
-            else
+            else if (!isRejected)
               _buildTimelineSection(isCod, isRental, statusIndex),
             const SizedBox(height: 32),
             _buildOrderDetailCard(
@@ -183,6 +185,60 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         child: ActiveRentalCard(item: item, deadline: _order!.returnDeadline!),
       );
     }).toList();
+  }
+
+  Widget _buildVerificationRejectedBanner() {
+    final reason = (_order!.rejectionReason ?? '').trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cancel_outlined, color: Colors.red.shade700, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Verifikasi ditolak',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: const Color(0xFF991B1B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Toko tidak dapat memproses pesanan ini. Alasan:',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            reason.isNotEmpty
+                ? reason
+                : 'Tidak ada detail tambahan dari toko.',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1B1B1B),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // removed old _buildRentalTimerCard and _buildTimeUnit
@@ -493,8 +549,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             padding: EdgeInsets.symmetric(vertical: 20.0),
             child: _DottedDivider(),
           ),
-          if (paymentMethod != 'Bayar di Toko') ...[
-            _buildDetailRow('Biaya Pengiriman', 'Rp0'),
+          if (paymentMethod != 'Bayar di Toko' && _order!.shippingCost > 0) ...[
+            _buildDetailRow('Biaya Pengiriman', _formatPrice(_order!.shippingCost)),
             const SizedBox(height: 12),
           ],
           _buildDetailRow('Metode Pembayaran', paymentMethod),          if (isRental) ...[

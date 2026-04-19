@@ -16,8 +16,6 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  bool _isRentSelected = false;
-
   // Helper Format Price
   String _formatPrice(int price) {
     var str = price.toString();
@@ -29,22 +27,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return 'Rp $result';
   }
 
-  int get _displayPrice {
-    if (_isRentSelected) {
-      return widget.product.price + widget.product.deposit;
-    }
-    return widget.product.price;
-  }
-
   void _showBottomSheet(BuildContext context, String actionText) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => ProductActionBottomSheet(
-        product: widget.product,
-        actionText: actionText,
-        isRental: _isRentSelected,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ProductActionBottomSheet(
+            product: widget.product,
+            actionText: actionText,
+          ),
+        ),
       ),
     );
   }
@@ -152,96 +150,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Beli / Sewa Toggle (Condition: isRentable)
-                      if (widget.product.isRentable) ...[
-                        Container(
-                          height: 54,
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFFF8FAFC,
-                            ), // Faded white/light gray
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFE2E8F0),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      setState(() => _isRentSelected = false),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: !_isRentSelected
-                                          ? const Color(0xFFFFCC00)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: !_isRentSelected
-                                          ? [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(
-                                                  alpha: 0.05,
-                                                ),
-                                                blurRadius: 4,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ]
-                                          : null,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'Beli',
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF1B1B1B),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      setState(() => _isRentSelected = true),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: _isRentSelected
-                                          ? const Color(0xFFFFCC00)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: _isRentSelected
-                                          ? [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(
-                                                  alpha: 0.05,
-                                                ),
-                                                blurRadius: 4,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ]
-                                          : null,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'Sewa',
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF1B1B1B),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
                       // Warna Selector Preview
                       if (widget.product.colors != null && widget.product.colors!.isNotEmpty) ...[
                         Text(
@@ -447,7 +355,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                             ),
                             Text(
-                              _formatPrice(_displayPrice),
+                              _formatPrice(widget.product.price),
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,

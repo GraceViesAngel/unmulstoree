@@ -228,6 +228,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             color: Colors.red,
                             onTap: () => context.push('/admin-denda'),
                           ),
+                          _buildProfessionalMenu(
+                            icon: Icons.photo_library_outlined,
+                            title: 'Banner Beranda',
+                            subtitle: 'Maks. 3 gambar promo (carousel)',
+                            color: Colors.teal,
+                            onTap: () => context.push('/admin-banners'),
+                          ),
 
                           if (_userRole == 'superadmin') ...[
                             const SizedBox(height: 32),

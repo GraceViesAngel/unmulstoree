@@ -8,7 +8,6 @@ class ProductCardWidget extends StatelessWidget {
 
   const ProductCardWidget({super.key, required this.product});
 
-  // Helper untuk format harga
   String _formatPrice(int price) {
     var str = price.toString();
     var result = '';
@@ -19,14 +18,6 @@ class ProductCardWidget extends StatelessWidget {
     return 'Rp $result';
   }
 
-  Widget _buildErrorImage() {
-    return Container(
-      color: AppTheme.borderColor,
-      width: double.infinity,
-      child: const Icon(Icons.image_not_supported, color: AppTheme.subtitleColor),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -35,79 +26,82 @@ class ProductCardWidget extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Gambar Produk
-          Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
-              child: product.imagePath.startsWith('http')
-                ? Image.network(
-                    product.imagePath,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildErrorImage(),
-                  )
-                : Image.asset(
-                    product.imagePath,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildErrorImage(),
-                  ),
-            ),
-          ),
-          
-          // Deskripsi
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatPrice(product.price),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
+                child: Image.asset(
+                  product.imagePath,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: AppTheme.borderColor,
+                    width: double.infinity,
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: AppTheme.subtitleColor,
                     ),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: AppTheme.primaryColor, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          product.rating.toString(),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.subtitleColor,
-                          ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.title,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatPrice(product.price),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                      ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.star,
+                            color: AppTheme.primaryColor,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            product.rating.toString(),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.subtitleColor),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-   );
+    );
   }
 }

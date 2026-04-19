@@ -350,7 +350,9 @@ class _OrderListContentState extends State<_OrderListContent> {
                 decoration: BoxDecoration(
                   color: order.status == 'Selesai'
                       ? const Color(0xFFD1FAE5)
-                      : const Color(0xFFDBEAFE),
+                      : order.status == 'Ditolak'
+                          ? const Color(0xFFFEE2E2)
+                          : const Color(0xFFDBEAFE),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -358,7 +360,9 @@ class _OrderListContentState extends State<_OrderListContent> {
                   style: GoogleFonts.poppins(
                     color: order.status == 'Selesai'
                         ? const Color(0xFF10B981)
-                        : const Color(0xFF3B82F6),
+                        : order.status == 'Ditolak'
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF3B82F6),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -366,6 +370,42 @@ class _OrderListContentState extends State<_OrderListContent> {
               ),
             ],
           ),
+          if (order.status == 'Ditolak') ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Alasan penolakan:',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF991B1B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    (order.rejectionReason ?? '').trim().isNotEmpty
+                        ? order.rejectionReason!.trim()
+                        : 'Tidak ada detail dari toko.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: const Color(0xFF1B1B1B),
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           if (firstItem != null)
             Row(

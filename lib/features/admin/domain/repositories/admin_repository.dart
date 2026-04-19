@@ -95,11 +95,29 @@ class AdminRepository {
   }
 
   Future<List<Map<String, dynamic>>> getAllPesanan() async {
-    return await _supabase
-        .from('orders')
-        .select('*, order_items(*), profiles(*)')
-        .eq('is_rental', false)
-        .order('created_at', ascending: false);
+    // Pembelian: false atau null (data lama / migrasi).
+    const purchaseFilter = 'is_rental.is.null,is_rental.eq.false';
+    try {
+      final response = await _supabase
+          .from('orders')
+          .select('*, order_items(*), profiles(*)')
+          .or(purchaseFilter)
+          .order('created_at', ascending: false);
+      return _castOrderRows(response);
+    } catch (e) {
+      debugPrint('getAllPesanan (with profiles): $e — retry without embed');
+      final response = await _supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .or(purchaseFilter)
+          .order('created_at', ascending: false);
+      return _castOrderRows(response);
+    }
+  }
+
+  List<Map<String, dynamic>> _castOrderRows(dynamic response) {
+    final list = response as List<dynamic>;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   Future<void> updateStatusPesanan(String orderId, String status) async {
@@ -113,11 +131,11 @@ class AdminRepository {
         .eq('id', orderId);
   }
 
-  Future<void> setDitolak(String orderId) async {
-    await _supabase
-        .from('orders')
-        .update({'status': 'Ditolak'})
-        .eq('id', orderId);
+  Future<void> setDitolak(String orderId, {required String reason}) async {
+    await _supabase.from('orders').update({
+      'status': 'Ditolak',
+      'rejection_reason': reason.trim(),
+    }).eq('id', orderId);
   }
 
   Future<void> setDikemas(String orderId) async {
@@ -177,11 +195,22 @@ class AdminRepository {
   }
 
   Future<List<Map<String, dynamic>>> getAllPenyewaan() async {
-    return await _supabase
-        .from('orders')
-        .select('*, order_items(*), profiles(*)')
-        .eq('is_rental', true)
-        .order('created_at', ascending: false);
+    try {
+      final response = await _supabase
+          .from('orders')
+          .select('*, order_items(*), profiles(*)')
+          .eq('is_rental', true)
+          .order('created_at', ascending: false);
+      return _castOrderRows(response);
+    } catch (e) {
+      debugPrint('getAllPenyewaan (with profiles): $e — retry without embed');
+      final response = await _supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('is_rental', true)
+          .order('created_at', ascending: false);
+      return _castOrderRows(response);
+    }
   }
 
   Future<void> updateDurasiSewa(String orderId, int durasi) async {

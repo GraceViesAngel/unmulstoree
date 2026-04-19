@@ -31,6 +31,7 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
   String? _selectedColor;
   final CartRepository _cartRepository = CartRepository();
   bool _isSubmitting = false;
+  bool _isRental = false;
 
   @override
   void initState() {
@@ -54,6 +55,13 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
     return 'Rp$result';
   }
 
+  int get _displayPrice {
+    if (_isRental) {
+      return widget.product.price + widget.product.deposit;
+    }
+    return widget.product.price;
+  }
+
   Future<void> _handleAction() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
@@ -66,12 +74,14 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
     // Check Profile Completeness
     final profileRepo = ProfileRepository();
     final profile = await profileRepo.getCurrentProfile();
-    
-    if (profile == null || 
-        profile.fullName == null || profile.fullName!.isEmpty ||
-        profile.phoneNumber == null || profile.phoneNumber!.isEmpty ||
-        profile.address == null || profile.address!.isEmpty) {
-      
+
+    if (profile == null ||
+        profile.fullName == null ||
+        profile.fullName!.isEmpty ||
+        profile.phoneNumber == null ||
+        profile.phoneNumber!.isEmpty ||
+        profile.city == null ||
+        profile.city!.isEmpty) {
       if (mounted) {
         showDialog(
           context: context,
@@ -81,13 +91,16 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
               style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
             ),
             content: Text(
-              'Silakan lengkapi Nama Lengkap, Nomor Telepon, dan Alamat Anda sebelum melakukan transaksi.',
+              'Silakan lengkapi Nama Lengkap, Nomor HP, dan Kota Anda sebelum melakukan transaksi.',
               style: GoogleFonts.poppins(),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Nanti', style: GoogleFonts.poppins(color: Colors.grey)),
+                child: Text(
+                  'Nanti',
+                  style: GoogleFonts.poppins(color: Colors.grey),
+                ),
               ),
               TextButton(
                 onPressed: () {
@@ -97,7 +110,10 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
                 },
                 child: Text(
                   'Lengkapi Sekarang',
-                  style: GoogleFonts.poppins(color: const Color(0xFFFFCC00), fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFFFFCC00),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -125,8 +141,9 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
           quantity: _quantity,
           variation: [
             if (_selectedSize != null) 'Ukuran: $_selectedSize',
-            if (_selectedColor != null) 'Warna: $_selectedColor'
+            if (_selectedColor != null) 'Warna: $_selectedColor',
           ].join(', '),
+          isRental: _isRental,
         );
 
         await _cartRepository.addToCart(cartItem);
@@ -147,9 +164,9 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
               'quantity': _quantity,
               'variation': [
                 if (_selectedSize != null) 'Ukuran: $_selectedSize',
-                if (_selectedColor != null) 'Warna: $_selectedColor'
+                if (_selectedColor != null) 'Warna: $_selectedColor',
               ].join(', '),
-              'isRental': widget.isRental,
+              'isRental': _isRental,
             },
           );
         }
@@ -168,19 +185,36 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+      width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
         ),
       ),
       child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        top: false,
+        child: ListView(
+          shrinkWrap: true,
+          physics: const ClampingScrollPhysics(),
+          padding: EdgeInsets.zero,
           children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             // Header
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +252,7 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _formatPrice(widget.product.price),
+                        _formatPrice(_displayPrice),
                         style: GoogleFonts.poppins(
                           color: const Color(0xFFFFCC00),
                           fontWeight: FontWeight.bold,
@@ -239,9 +273,104 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
               ],
             ),
 
-            if (widget.product.sizes != null && widget.product.sizes!.isNotEmpty) ...[
+            if (widget.product.isRentable) ...[
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0),
+                padding: EdgeInsets.symmetric(vertical: 14.0),
+                child: Divider(color: Color(0xFFF1F5F9), thickness: 1.5),
+              ),
+              Container(
+                height: 54,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isRental = false),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: !_isRental
+                                ? const Color(0xFFFFCC00)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Beli',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1B1B1B),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isRental = true),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _isRental
+                                ? const Color(0xFFFFCC00)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Sewa',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1B1B1B),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_isRental) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF4CC),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        color: Color(0xFFCA8A04),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Biaya jaminan Rp${_formatPrice(widget.product.deposit)} akan dikembalikan setelah barang dikembalikan.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: const Color(0xFFCA8A04),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+            ],
+
+            if (widget.product.sizes != null &&
+                widget.product.sizes!.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14.0),
                 child: Divider(color: Color(0xFFF1F5F9), thickness: 1.5),
               ),
 
@@ -293,9 +422,10 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
               ),
             ],
 
-            if (widget.product.colors != null && widget.product.colors!.isNotEmpty) ...[
+            if (widget.product.colors != null &&
+                widget.product.colors!.isNotEmpty) ...[
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0),
+                padding: EdgeInsets.symmetric(vertical: 14.0),
                 child: Divider(color: Color(0xFFF1F5F9), thickness: 1.5),
               ),
 
@@ -349,7 +479,7 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
             ],
 
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20.0),
+              padding: EdgeInsets.symmetric(vertical: 14.0),
               child: Divider(color: Color(0xFFF1F5F9), thickness: 1.5),
             ),
 
@@ -400,17 +530,19 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
                         // Max allowed is either default maxQty or current stock, whichever is lower
                         int maxAllowed = widget.product.maxQty;
                         if (widget.product.stock < maxAllowed) {
-                           maxAllowed = widget.product.stock;
+                          maxAllowed = widget.product.stock;
                         }
-                        
+
                         if (_quantity < maxAllowed) {
                           setState(() => _quantity++);
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Batas pembelian maksimal adalah $maxAllowed buah'),
+                              content: Text(
+                                'Batas pembelian maksimal adalah $maxAllowed buah',
+                              ),
                               duration: const Duration(seconds: 2),
-                            )
+                            ),
                           );
                         }
                       }),
@@ -420,7 +552,7 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
               ],
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
 
             // Action Button
             PrimaryButton(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/constants/cities.dart';
 import '../../../home/data/models/product_model.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../../../profile/domain/repositories/profile_repository.dart';
@@ -35,7 +36,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   int _selectedPaymentIndex = 0;
   final OrderRepository _orderRepository = OrderRepository();
   final CartRepository _cartRepository = CartRepository();
+  final ProfileRepository _profileRepo = ProfileRepository();
   bool _isLoading = false;
+  int _shippingCost = 0;
+  ProfileModel? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await _profileRepo.getCurrentProfile();
+    if (profile != null) {
+      setState(() {
+        _profile = profile;
+        _shippingCost = Cities.getShippingCost(profile.city);
+      });
+    }
+  }
 
   bool get _isFromCart => widget.items != null && widget.items!.isNotEmpty;
 
@@ -59,31 +79,43 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   int get _totalDeposit {
     if (_isFromCart) {
-      return _cartItems.fold(0, (sum, item) => sum + (item.product?.deposit ?? 0));
+      return _cartItems
+          .where((item) => item.isRental)
+          .fold(0, (sum, item) => sum + (item.product?.deposit ?? 0));
     }
-    return (_singleProduct?.deposit ?? 0);
+    return _orderIsRental ? (_singleProduct?.deposit ?? 0) : 0;
   }
 
   int get _totalRentalDuration {
     if (_isFromCart) {
-      final rentalItems = _cartItems.where((item) => item.product?.isRentable ?? false);
+      final rentalItems = _cartItems.where((item) => item.isRental);
       if (rentalItems.isEmpty) return 0;
-      return rentalItems.map((e) => e.product!.rentalDuration).reduce((a, b) => a > b ? a : b);
+      return rentalItems
+          .map((e) => e.product?.rentalDuration ?? 0)
+          .reduce((a, b) => a > b ? a : b);
     }
-    return _singleProduct?.rentalDuration ?? 0;
+    return _orderIsRental ? (_singleProduct?.rentalDuration ?? 0) : 0;
   }
 
   int get _totalLateFee {
     if (_isFromCart) {
-      return _cartItems.where((item) => item.product?.isRentable ?? false)
+      return _cartItems
+          .where((item) => item.isRental)
           .fold(0, (sum, item) => sum + (item.product?.lateFee ?? 0));
     }
-    return _singleProduct?.lateFee ?? 0;
+    return _orderIsRental ? (_singleProduct?.lateFee ?? 0) : 0;
   }
 
-  int get _finalTotalPrice => _totalPrice + _totalDeposit;
+  int get _finalTotalPrice => _totalPrice + _totalDeposit + _shippingCost;
 
-  bool get _hasRentalItem => widget.isRental || (widget.items != null && widget.items!.any((item) => item.product?.isRentable ?? false));
+  /// True only when the user actually chose rental (line items / checkout flag),
+  /// not merely because the product supports rent.
+  bool get _orderIsRental {
+    if (_isFromCart) {
+      return _cartItems.any((item) => item.isRental);
+    }
+    return widget.isRental;
+  }
 
   String _formatPrice(int price) {
     var str = price.toString();
@@ -236,7 +268,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      profile?.address ?? 'Alamat belum diatur',
+                      profile?.fullAddress.isNotEmpty == true
+                          ? profile!.fullAddress
+                          : 'Alamat belum diatur',
                       style: GoogleFonts.poppins(
                         color: const Color(0xFF334155),
                         fontSize: 12,
@@ -418,7 +452,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPaymentMethods() {
-    if (_hasRentalItem) {
+    if (_orderIsRental) {
       // Force 'Bayar di Toko' for rental
       _selectedPaymentIndex = 1;
       return Column(
@@ -533,7 +567,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             'Harga Produk ($_itemCount item)',
             _formatPrice(_totalPrice),
           ),
-          if (_hasRentalItem) ...[
+          if (_orderIsRental) ...[
             const SizedBox(height: 12),
             _buildDetailRow(
               'Biaya Jaminan (Deposit)',
@@ -550,9 +584,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               '${_formatPrice(_totalLateFee)} / Hari',
             ),
           ],
-          if (_selectedPaymentIndex == 0) ...[
+          if (_selectedPaymentIndex == 0 && _shippingCost > 0) ...[
             const SizedBox(height: 12),
-            _buildDetailRow('Biaya Pengiriman', 'Rp0'),
+            _buildDetailRow('Biaya Pengiriman', _formatPrice(_shippingCost)),
           ],
           const SizedBox(height: 16),
           _buildDashedLine(),
@@ -578,7 +612,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ],
           ),
-          if (_hasRentalItem) ...[
+          if (_orderIsRental) ...[
             const SizedBox(height: 12),
             Text(
               '*Biaya jaminan akan dikembalikan setelah barang kembali dalam kondisi baik.\n*Keterlambatan pengembalian akan dikenakan denda sesuai biaya keterlambatan per hari.',
@@ -673,11 +707,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (profile == null ||
         (profile.fullName ?? '').trim().isEmpty ||
         (profile.phoneNumber ?? '').trim().isEmpty ||
-        (profile.address ?? '').trim().isEmpty) {
+        (profile.city ?? '').trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Lengkapi nama, nomor telepon, dan alamat di profil sebelum melanjutkan pembayaran.',
+            'Lengkapan Profil: Nama, Nomor HP, dan Kota wajib diisi.',
           ),
         ),
       );
@@ -702,11 +736,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (_isFromCart) {
         final order = await _orderRepository.createOrderFromCart(
           items: _cartItems,
-          isRental: _hasRentalItem,
+          isRental: _orderIsRental,
           paymentMethod: paymentMethod,
           deposit: _totalDeposit,
           rentalDuration: _totalRentalDuration,
           lateFee: _totalLateFee,
+          shippingCost: _shippingCost,
         );
         orderId = order.id;
         final itemIds = _cartItems.map((e) => e.id).toList();
@@ -718,12 +753,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           imagePath: _singleProduct!.imagePath,
           quantity: widget.quantity,
           price: _singleProduct!.price,
-          isRental: _singleProduct!.isRentable,
+          isRental: widget.isRental,
           variation: widget.variation ?? 'Size L',
           paymentMethod: paymentMethod,
           deposit: _totalDeposit,
           rentalDuration: _totalRentalDuration,
           lateFee: _totalLateFee,
+          shippingCost: _shippingCost,
         );
         orderId = order.id;
       }
@@ -737,7 +773,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           '/order-status',
           extra: {
             'orderId': orderId,
-            'isRental': _hasRentalItem,
+            'isRental': _orderIsRental,
             'totalPrice': _finalTotalPrice,
             'itemCount': _itemCount,
           },

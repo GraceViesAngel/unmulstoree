@@ -15,8 +15,11 @@ class OrderModel {
   final DateTime? returnDeadline;
   final String? returnResi;
   final int lateFee;
+  final int shippingCost;
   final DateTime createdAt;
   final List<OrderItemModel>? items;
+  /// Alasan penolakan verifikasi oleh admin (status Ditolak).
+  final String? rejectionReason;
 
   OrderModel({
     required this.id,
@@ -35,8 +38,10 @@ class OrderModel {
     this.returnDeadline,
     this.returnResi,
     this.lateFee = 0,
+    this.shippingCost = 0,
     required this.createdAt,
     this.items,
+    this.rejectionReason,
   });
 
   factory OrderModel.fromMap(Map<String, dynamic> map) {
@@ -57,6 +62,7 @@ class OrderModel {
       returnDeadline: map['return_deadline'] != null ? DateTime.parse(map['return_deadline']) : null,
       returnResi: map['return_resi'],
       lateFee: map['late_fee'] ?? 0,
+      shippingCost: map['shipping_cost'] ?? 0,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])
           : DateTime.now(),
@@ -65,6 +71,7 @@ class OrderModel {
                 .map((e) => OrderItemModel.fromMap(e))
                 .toList()
           : null,
+      rejectionReason: map['rejection_reason'] as String?,
     );
   }
 
@@ -83,6 +90,8 @@ class OrderModel {
       'return_deadline': returnDeadline?.toIso8601String(),
       'return_resi': returnResi,
       'late_fee': lateFee,
+      'shipping_cost': shippingCost,
+      if (rejectionReason != null) 'rejection_reason': rejectionReason,
     };
   }
 }

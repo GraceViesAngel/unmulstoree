@@ -63,11 +63,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     if (lowRole == 'admin' || lowRole == 'superadmin') {
       if (mounted) {
         debugPrint('Admin detected in user page, redirecting to dashboard...');
-        await goDeferred(
-          context,
-          '/admin-dashboard',
-          extra: {'role': lowRole},
-        );
+        await goDeferred(context, '/admin-dashboard', extra: {'role': lowRole});
       }
     }
   }

@@ -4,6 +4,19 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../../../../core/theme/app_theme.dart';
 
+Map<String, dynamic>? _profilesFromOrder(dynamic raw) {
+  if (raw == null) return null;
+  if (raw is Map<String, dynamic>) return raw;
+  if (raw is Map) return Map<String, dynamic>.from(raw);
+  if (raw is List) {
+    for (final e in raw) {
+      if (e is Map<String, dynamic>) return e;
+      if (e is Map) return Map<String, dynamic>.from(e);
+    }
+  }
+  return null;
+}
+
 class KelolaPenyewaanScreen extends StatefulWidget {
   const KelolaPenyewaanScreen({super.key});
 
@@ -16,6 +29,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
   List<Map<String, dynamic>> _allPenyewaan = [];
   List<Map<String, dynamic>> _filteredPenyewaan = [];
   bool _isLoading = true;
+  String? _loadError;
 
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatus = 'Semua';
@@ -46,6 +60,10 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
   }
 
   Future<void> _loadPenyewaan() async {
+    setState(() {
+      _loadError = null;
+      _isLoading = true;
+    });
     try {
       final penyewaan = await _repo.getAllPenyewaan();
       if (mounted) {
@@ -53,11 +71,20 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           _allPenyewaan = penyewaan;
           _filteredPenyewaan = penyewaan;
           _isLoading = false;
+          _loadError = null;
         });
         _applyFilters();
       }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (e, st) {
+      debugPrint('KelolaPenyewaan _loadPenyewaan error: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _allPenyewaan = [];
+          _filteredPenyewaan = [];
+          _isLoading = false;
+          _loadError = e.toString();
+        });
+      }
     }
   }
 
@@ -79,7 +106,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
         }
 
         final query = _searchController.text.toLowerCase();
-        final profiles = p['profiles'] as Map?;
+        final profiles = _profilesFromOrder(p['profiles']);
         final name = (profiles?['full_name'] ?? '').toString().toLowerCase();
         final orderId = (p['order_id_display'] ?? '').toString().toLowerCase();
 
@@ -89,7 +116,13 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
     });
   }
 
-  Future<void> _updateStatus(String orderId, String status, String currentStatus, {bool isCancelApproved = false}) async {
+  Future<void> _updateStatus(
+    String orderId,
+    String status,
+    String currentStatus, {
+    bool isCancelApproved = false,
+    String? rejectionReason,
+  }) async {
     try {
       debugPrint('DEBUG _updateStatus: orderId=$orderId, newStatus=$status, currentStatus=$currentStatus, isCancelApproved=$isCancelApproved');
       
@@ -102,8 +135,12 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
         await _repo.konfirmasiDikembalikan(orderId);
       } else if (status == 'Selesai') {
         await _repo.setSelesaiSewa(orderId);
-      } else if (currentStatus == 'Menunggu Verifikasi' && status == 'Dibatalkan') {
-        await _repo.setDitolak(orderId);
+      } else if (currentStatus == 'Menunggu Verifikasi' && status == 'Ditolak') {
+        final r = (rejectionReason ?? '').trim();
+        if (r.length < 10) {
+          throw Exception('Alasan penolakan minimal 10 karakter.');
+        }
+        await _repo.setDitolak(orderId, reason: r);
       } else {
         await _repo.updateStatusPesanan(orderId, status);
       }
@@ -123,6 +160,92 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
         );
       }
     }
+  }
+
+  void _showRejectVerificationDialog({
+    required String orderId,
+    required String currentStatus,
+  }) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            final ok = controller.text.trim().length >= 10;
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                'Tolak verifikasi sewa',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Alasan akan ditampilkan kepada penyewa. Wajib diisi (minimal 10 karakter).',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      maxLines: 4,
+                      maxLength: 500,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Contoh: Produk tidak tersedia untuk tanggal tersebut.',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        counterText: '',
+                      ),
+                      onChanged: (_) => setLocal(() {}),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Batal',
+                    style: GoogleFonts.poppins(color: Colors.grey),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: ok
+                      ? () {
+                          Navigator.pop(ctx);
+                          _updateStatus(
+                            orderId,
+                            'Ditolak',
+                            currentStatus,
+                            rejectionReason: controller.text.trim(),
+                          );
+                        }
+                      : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red.shade700,
+                  ),
+                  child: Text(
+                    'Tolak penyewaan',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) => controller.dispose());
   }
 
   void _showSweetAlert({
@@ -355,7 +478,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
 
   void _showOrderDetailDialog(Map<String, dynamic> item) {
     final items = item['order_items'] as List? ?? [];
-    final profiles = item['profiles'] as Map? ?? {};
+    final profiles = _profilesFromOrder(item['profiles']) ?? {};
     final status = item['status'] ?? 'Menunggu';
 
     showDialog(
@@ -629,7 +752,10 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                     onPressed: () {
                       final navigator = Navigator.of(context);
                       navigator.pop();
-                      _updateStatus(orderId, 'Dibatalkan', currentStatus);
+                      _showRejectVerificationDialog(
+                        orderId: orderId,
+                        currentStatus: currentStatus,
+                      );
                     },
                     child: Text(
                       'Tolak Penyewaan',
@@ -647,6 +773,51 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildEmptyOrErrorBody() {
+    if (_loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cloud_off_outlined, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Gagal memuat penyewaan',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _loadError!,
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Admin perlu policy RLS untuk orders & order_items — lihat '
+                'supabase/migrations/20260419130000_admin_rls_orders_profiles.sql',
+                style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _loadPenyewaan,
+                icon: const Icon(Icons.refresh, size: 20),
+                label: const Text('Coba lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return const Center(child: Text('Tidak ada penyewaan'));
   }
 
   @override
@@ -668,7 +839,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                 _buildFilterSection(),
                 Expanded(
                   child: _filteredPenyewaan.isEmpty
-                      ? const Center(child: Text('Tidak ada penyewaan'))
+                      ? _buildEmptyOrErrorBody()
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                           itemCount: _filteredPenyewaan.length,
@@ -806,7 +977,9 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                                                 children: [
                                                   _buildCompactInfo(
                                                     Icons.person_outline,
-                                                    pesanan['profiles']?['full_name'] ??
+                                                    _profilesFromOrder(
+                                                          pesanan['profiles'],
+                                                        )?['full_name'] ??
                                                         'Guest',
                                                   ),
                                                   const SizedBox(height: 4),
