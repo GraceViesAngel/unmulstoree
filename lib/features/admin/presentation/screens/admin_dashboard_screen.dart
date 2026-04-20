@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/confirm_action_sheet.dart';
@@ -17,254 +18,332 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final AdminRepository _repo = AdminRepository();
-  List<Map<String, dynamic>> _statistik = [];
-  bool _isLoading = true;
   late String _userRole;
+  DateTime _lastSeenPurchase = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastSeenRental = DateTime.fromMillisecondsSinceEpoch(0);
+
+  static const String _purchaseSeenKey = 'admin_last_seen_purchase_pending_at';
+  static const String _rentalSeenKey = 'admin_last_seen_rental_pending_at';
 
   @override
   void initState() {
     super.initState();
     _userRole = widget.role ?? 'admin';
-    _loadStatistik();
+    _loadSeenState();
   }
 
-  Future<void> _loadStatistik() async {
-    try {
-      final stats = await _repo.getStatistik();
-      if (mounted) {
-        setState(() {
-          _statistik = stats;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+  Future<void> _loadSeenState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _lastSeenPurchase = _parseSeenTime(prefs.getString(_purchaseSeenKey));
+      _lastSeenRental = _parseSeenTime(prefs.getString(_rentalSeenKey));
+    });
+  }
+
+  DateTime _parseSeenTime(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return DateTime.fromMillisecondsSinceEpoch(0);
     }
+    return DateTime.tryParse(raw) ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: CustomScrollView(
-                physics: const ClampingScrollPhysics(),
-                slivers: [
-                  // Modern Header with Grey Placeholder Profile
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              // Default Grey Placeholder Profile
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.grey[200],
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.05,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _repo.watchOrdersRealtime(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Gagal memuat dashboard: ${snapshot.error}',
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          final orders = snapshot.data ?? const <Map<String, dynamic>>[];
+          final stats = _computeStats(orders);
+          final pendingPurchase = _countPendingByType(
+            orders,
+            isRental: false,
+            lastSeen: _lastSeenPurchase,
+          );
+          final pendingRental = _countPendingByType(
+            orders,
+            isRental: true,
+            lastSeen: _lastSeenRental,
+          );
+
+          return SafeArea(
+            child: CustomScrollView(
+              physics: const ClampingScrollPhysics(),
+              slivers: [
+                // Modern Header with Grey Placeholder Profile
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            // Default Grey Placeholder Profile
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[200],
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
                                 ),
-                                child: Icon(
-                                  Icons.person,
-                                  color: Colors.grey[500],
-                                  size: 28,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Admin Dashboard',
-                                    style: GoogleFonts.poppins(
-                                      color: const Color(0xFF1B1B1B),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                  Text(
-                                    _userRole.toUpperCase(),
-                                    style: GoogleFonts.poppins(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 10,
-                                      letterSpacing: 0.5,
-                                    ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                          // Logout Button with Red Icon
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.logout,
-                                color: Colors.red,
-                                size: 18,
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.grey[500],
+                                size: 28,
                               ),
-                              onPressed: () async {
-                                final confirm = await showConfirmActionSheet(
-                                  context,
-                                  variant: ConfirmActionVariant.logout,
-                                );
-                                if (confirm == true && mounted) {
-                                  await Supabase.instance.client.auth.signOut();
-                                  if (mounted) context.go('/');
-                                }
-                              },                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Statistik Cards
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Statistik Toko',
-                            style: GoogleFonts.poppins(
-                              color: const Color(0xFF1B1B1B),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          if (_statistik.isEmpty)
-                            _buildEmptyStats()
-                          else
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    mainAxisSpacing: 12,
-                                    crossAxisSpacing: 12,
-                                    childAspectRatio: 1.6,
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Admin Dashboard',
+                                  style: GoogleFonts.poppins(
+                                    color: const Color(0xFF1B1B1B),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
                                   ),
-                              itemCount: _statistik.length,
-                              itemBuilder: (context, index) {
-                                final stat = _statistik[index];
-                                return _buildStatCard(stat);
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
-
-                  // Management Menu
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Manajemen Operasional',
-                            style: GoogleFonts.poppins(
-                              color: const Color(0xFF1B1B1B),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildProfessionalMenu(
-                            icon: Icons.assignment_outlined,
-                            title: 'Kelola Pembelian',
-                            subtitle: 'Status pembelian & pembayaran',
-                            color: Colors.blue,
-                            onTap: () => context
-                                .push('/admin-pesanan')
-                                .then((_) => _loadStatistik()),
-                          ),
-                          _buildProfessionalMenu(
-                            icon: Icons.calendar_today_outlined,
-                            title: 'Kelola Penyewaan',
-                            subtitle: 'Logistik peminjaman produk',
-                            color: Colors.orange,
-                            onTap: () => context
-                                .push('/admin-penyewaan')
-                                .then((_) => _loadStatistik()),
-                          ),
-                          _buildProfessionalMenu(
-                            icon: Icons.error_outline_rounded,
-                            title: 'Monitoring Denda',
-                            subtitle: 'Keterlambatan & denda',
-                            color: Colors.red,
-                            onTap: () => context.push('/admin-denda'),
-                          ),
-                          _buildProfessionalMenu(
-                            icon: Icons.photo_library_outlined,
-                            title: 'Banner Beranda',
-                            subtitle: 'Maks. 3 gambar promo (carousel)',
-                            color: Colors.teal,
-                            onTap: () => context.push('/admin-banners'),
-                          ),
-
-                          if (_userRole == 'superadmin') ...[
-                            const SizedBox(height: 32),
-                            Text(
-                              'Menu Super Admin',
-                              style: GoogleFonts.poppins(
-                                color: const Color(0xFF1B1B1B),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildProfessionalMenu(
-                              icon: Icons.admin_panel_settings,
-                              title: 'Super Admin Panel',
-                              subtitle: 'Kelola Admin, Produk, & Pengaturan Sistem',
-                              color: Colors.indigo,
-                              onTap: () => context.push('/superadmin'),
+                                ),
+                                Text(
+                                  _userRole.toUpperCase(),
+                                  style: GoogleFonts.poppins(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ],
-                      ),
+                        ),
+                        // Logout Button with Red Icon
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.logout,
+                              color: Colors.red,
+                              size: 18,
+                            ),
+                            onPressed: () async {
+                              final confirm = await showConfirmActionSheet(
+                                context,
+                                variant: ConfirmActionVariant.logout,
+                              );
+                              if (confirm == true && mounted) {
+                                await Supabase.instance.client.auth.signOut();
+                                if (mounted) context.go('/');
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                ],
-              ),
+                // Statistik Cards
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Statistik Toko',
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF1B1B1B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (stats.isEmpty)
+                          _buildEmptyStats()
+                        else
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 1.6,
+                                ),
+                            itemCount: stats.length,
+                            itemBuilder: (context, index) {
+                              final stat = stats[index];
+                              return _buildStatCard(stat);
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+
+                // Management Menu
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manajemen Operasional',
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF1B1B1B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildProfessionalMenu(
+                          icon: Icons.assignment_outlined,
+                          title: 'Kelola Pembelian',
+                          subtitle: 'Status pembelian & pembayaran',
+                          color: Colors.blue,
+                          notificationCount: pendingPurchase,
+                          onTap: () async {
+                            await context.push('/admin-pesanan');
+                            _loadSeenState();
+                          },
+                        ),
+                        _buildProfessionalMenu(
+                          icon: Icons.calendar_today_outlined,
+                          title: 'Kelola Penyewaan',
+                          subtitle: 'Logistik peminjaman produk',
+                          color: Colors.orange,
+                          notificationCount: pendingRental,
+                          onTap: () async {
+                            await context.push('/admin-penyewaan');
+                            _loadSeenState();
+                          },
+                        ),
+                        _buildProfessionalMenu(
+                          icon: Icons.photo_library_outlined,
+                          title: 'Banner Beranda',
+                          subtitle: 'Maks. 3 gambar promo (carousel)',
+                          color: Colors.teal,
+                          onTap: () => context.push('/admin-banners'),
+                        ),
+
+                        if (_userRole == 'superadmin') ...[
+                          const SizedBox(height: 32),
+                          Text(
+                            'Menu Super Admin',
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF1B1B1B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildProfessionalMenu(
+                            icon: Icons.admin_panel_settings,
+                            title: 'Super Admin Panel',
+                            subtitle: 'Kelola Admin & Produk',
+                            color: Colors.indigo,
+                            onTap: () => context.push('/superadmin'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
             ),
+          );
+        },
+      ),
     );
+  }
+
+  List<Map<String, dynamic>> _computeStats(List<Map<String, dynamic>> orders) {
+    final totalPesanan = orders.length;
+
+    final sewaAktif = orders.where((order) {
+      final isRental = order['is_rental'] == true;
+      if (!isRental) return false;
+      final status = (order['status'] ?? '').toString().trim();
+      return status != 'Selesai' &&
+          status != 'Ditolak' &&
+          status != 'Dibatalkan';
+    }).length;
+
+    final pesananSelesai = orders.where((order) {
+      final status = (order['status'] ?? '').toString().trim();
+      return status == 'Selesai' || status == 'Diterima';
+    }).length;
+
+    final pesananDibatalkan = orders.where((order) {
+      final status = (order['status'] ?? '').toString().trim();
+      return status == 'Ditolak' ||
+          status == 'Dibatalkan' ||
+          status == 'Menunggu Pembatalan';
+    }).length;
+
+    return [
+      {'label': 'Total Pesanan', 'value': totalPesanan},
+      {'label': 'Sewa Aktif', 'value': sewaAktif},
+      {'label': 'Pesanan Selesai', 'value': pesananSelesai},
+      {'label': 'Pesanan Dibatalkan', 'value': pesananDibatalkan},
+    ];
+  }
+
+  int _countPendingByType(
+    List<Map<String, dynamic>> orders, {
+    required bool isRental,
+    required DateTime lastSeen,
+  }) {
+    return orders.where((order) {
+      final orderIsRental = order['is_rental'] == true;
+      final status = (order['status'] ?? '').toString().trim();
+      final createdAt = DateTime.tryParse(
+        (order['created_at'] ?? '').toString(),
+      );
+      if (createdAt == null) return false;
+      return orderIsRental == isRental &&
+          status == 'Menunggu Verifikasi' &&
+          createdAt.isAfter(lastSeen);
+    }).length;
   }
 
   Widget _buildEmptyStats() {
@@ -343,6 +422,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required String subtitle,
     required Color color,
     required VoidCallback onTap,
+    int notificationCount = 0,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -360,14 +440,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(icon, color: color, size: 22),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(icon, color: color, size: 22),
+                    ),
+                    if (notificationCount > 0)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            notificationCount > 9 ? '9+' : '$notificationCount',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(

@@ -66,9 +66,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         return 2;
       case 'Dikembalikan':
         return 3;
+      case 'Selesai':
+        return 3;
       default:
         if (status == 'Dalam Masa Sewa') return 2;
         if (status == 'Dikembalikan') return 3;
+        if (status == 'Selesai') return 3;
         return 0;
     }
   }
@@ -179,7 +182,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     return _order!.items!.map((item) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
-        child: ActiveRentalCard(item: item, deadline: _order!.returnDeadline!),
+        child: ActiveRentalCard(
+          item: item,
+          deadline: _order!.returnDeadline!,
+          lateFeePerDay: _order!.lateFee,
+        ),
       );
     }).toList();
   }
@@ -223,9 +230,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            reason.isNotEmpty
-                ? reason
-                : 'Tidak ada detail tambahan dari toko.',
+            reason.isNotEmpty ? reason : 'Tidak ada detail tambahan dari toko.',
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -303,7 +308,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         if (isCod)
           _buildTimelineItem(
             'Dikirim',
-            'Kurir sedang dalam perjalanan',
+            _order!.resi != null && _order!.resi!.trim().isNotEmpty
+                ? 'Kurir sedang dalam perjalanan (Resi: ${_order!.resi})'
+                : 'Kurir sedang dalam perjalanan',
             isCompleted: statusIndex >= 3,
             isPending: statusIndex == 3,
             isLast: false,
@@ -545,17 +552,25 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             padding: EdgeInsets.symmetric(vertical: 20.0),
             child: _DottedDivider(),
           ),
-_buildDetailRow('Metode Pembayaran', paymentMethod),
+          _buildDetailRow('Metode Pembayaran', paymentMethod),
           const SizedBox(height: 8),
           if (paymentMethod != 'Bayar di Toko' && _order!.shippingCost > 0) ...[
-            _buildDetailRow('Biaya Pengiriman', _formatPrice(_order!.shippingCost)),
+            _buildDetailRow(
+              'Biaya Pengiriman',
+              _formatPrice(_order!.shippingCost),
+            ),
             const SizedBox(height: 8),
           ],
-          if (paymentMethod != 'Bayar di Toko') ...[
+          if (paymentMethod == 'COD') ...[
             const SizedBox(height: 8),
-            _buildDetailRow('Resi POS', '-'),
+            _buildDetailRow(
+              'Nomor Resi',
+              (_order!.resi ?? '').trim().isNotEmpty
+                  ? _order!.resi!.trim()
+                  : '-',
+            ),
           ],
-          
+
           const SizedBox(height: 8),
           _buildDetailRow('Subtotal', _formatPrice(_order!.totalPrice)),
           const SizedBox(height: 8),
@@ -563,10 +578,7 @@ _buildDetailRow('Metode Pembayaran', paymentMethod),
             _buildDetailRow('Deposit', _formatPrice(_order!.deposit)),
             const SizedBox(height: 8),
           ],
-          if (isRental) ...[
-            _buildDendaRow(),
-            const SizedBox(height: 8),
-          ],
+          if (isRental) ...[_buildDendaRow(), const SizedBox(height: 8)],
           const Divider(color: Color(0xFFE2E8F0)),
           const SizedBox(height: 8),
           Row(
@@ -581,7 +593,9 @@ _buildDetailRow('Metode Pembayaran', paymentMethod),
                 ),
               ),
               Text(
-                _formatPrice(_order!.totalPrice + _order!.deposit + _order!.lateFee),
+                _formatPrice(
+                  _order!.totalPrice + _order!.deposit + _order!.lateFee,
+                ),
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
@@ -611,7 +625,9 @@ _buildDetailRow('Metode Pembayaran', paymentMethod),
               fontWeight: FontWeight.w900,
               onPressed: () async {
                 if (paymentMethod == 'Bayar di Toko') {
-                  final uri = Uri.parse('https://share.google/ZJBQhbS8serWOm8Tt');
+                  final uri = Uri.parse(
+                    'https://share.google/ZJBQhbS8serWOm8Tt',
+                  );
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   }
@@ -703,7 +719,10 @@ _buildDetailRow('Metode Pembayaran', paymentMethod),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFEF2F2),
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFEE2E2), width: 4),
+                      border: Border.all(
+                        color: const Color(0xFFFEE2E2),
+                        width: 4,
+                      ),
                     ),
                     child: const Icon(
                       Icons.warning_amber_rounded,
@@ -836,9 +855,13 @@ _buildDetailRow('Metode Pembayaran', paymentMethod),
 
   Widget _buildDendaRow() {
     final now = DateTime.now();
-    final isLate = _order!.returnDeadline != null && now.isAfter(_order!.returnDeadline!);
+    final isLate =
+        _order!.returnDeadline != null && now.isAfter(_order!.returnDeadline!);
     if (isLate) {
-      final daysLate = now.difference(_order!.returnDeadline!).inDays;
+      final secondsLate = now.difference(_order!.returnDeadline!).inSeconds;
+      final daysLate = (secondsLate / Duration.secondsPerDay).ceil();
+      final lateFeePerDay = _order!.lateFee > 0 ? _order!.lateFee : 20000;
+      final currentLateFine = daysLate * lateFeePerDay;
       return Column(
         children: [
           _buildDetailRow(
@@ -849,7 +872,7 @@ _buildDetailRow('Metode Pembayaran', paymentMethod),
           const SizedBox(height: 8),
           _buildDetailRow(
             'Denda Keterlambatan',
-            _formatPrice(_order!.lateFee),
+            _formatPrice(currentLateFine),
             valueColor: const Color(0xFFEF4444),
           ),
         ],
@@ -915,11 +938,13 @@ class _DottedDivider extends StatelessWidget {
 class ActiveRentalCard extends StatefulWidget {
   final OrderItemModel item;
   final DateTime deadline;
+  final int lateFeePerDay;
 
   const ActiveRentalCard({
     super.key,
     required this.item,
     required this.deadline,
+    required this.lateFeePerDay,
   });
 
   @override
@@ -1067,46 +1092,115 @@ class _ActiveRentalCardState extends State<ActiveRentalCard> {
             ],
           ),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(16),
+          _isOverdue
+              ? _buildLateFeeCard()
+              : Container(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildTimeUnit(hours, 'HOURS'),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 0,
+                        ),
+                        child: Text(
+                          ':',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFB91C1C),
+                          ),
+                        ),
+                      ),
+                      _buildTimeUnit(minutes, 'MINS'),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 0,
+                        ),
+                        child: Text(
+                          ':',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFB91C1C),
+                          ),
+                        ),
+                      ),
+                      _buildTimeUnit(seconds, 'SECS'),
+                    ],
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLateFeeCard() {
+    final daysLate = (_timeLeft.inSeconds / Duration.secondsPerDay).ceil();
+    final lateFeePerDay = widget.lateFeePerDay > 0
+        ? widget.lateFeePerDay
+        : 20000;
+    final currentLateFee = daysLate * lateFeePerDay;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Terlambat $daysLate hari',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: const Color(0xFF991B1B),
+              fontWeight: FontWeight.w600,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildTimeUnit(hours, 'HOURS'),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  child: Text(
-                    ':',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFB91C1C),
-                    ),
-                  ),
-                ),
-                _buildTimeUnit(minutes, 'MINS'),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  child: Text(
-                    ':',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFB91C1C),
-                    ),
-                  ),
-                ),
-                _buildTimeUnit(seconds, 'SECS'),
-              ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _formatPrice(currentLateFee),
+            style: GoogleFonts.poppins(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFFB91C1C),
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Denda berjalan +${_formatPrice(lateFeePerDay)} / hari',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: const Color(0xFFEF4444),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatPrice(int value) {
+    final raw = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < raw.length; i++) {
+      if (i > 0 && (raw.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(raw[i]);
+    }
+    return 'Rp${buffer.toString()}';
   }
 
   Widget _buildTimeUnit(String value, String label) {
@@ -1133,4 +1227,3 @@ class _ActiveRentalCardState extends State<ActiveRentalCard> {
     );
   }
 }
-

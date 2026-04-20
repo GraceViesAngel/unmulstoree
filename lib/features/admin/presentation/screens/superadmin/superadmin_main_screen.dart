@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pab/core/theme/app_theme.dart';
 import 'kelola_admin_screen.dart';
 import 'kelola_produk_screen.dart';
-import 'kelola_sistem_screen.dart';
 
 class SuperadminMainScreen extends StatelessWidget {
   const SuperadminMainScreen({super.key});
@@ -12,7 +11,7 @@ class SuperadminMainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
@@ -40,7 +39,6 @@ class SuperadminMainScreen extends StatelessWidget {
             tabs: const [
               Tab(text: 'Admin'),
               Tab(text: 'Produk'),
-              Tab(text: 'Sistem'),
             ],
           ),
         ),
@@ -48,7 +46,6 @@ class SuperadminMainScreen extends StatelessWidget {
           children: [
             KelolaAdminScreen(),
             KelolaProdukScreen(),
-            KelolaSistemScreen(),
           ],
         ),
       ),

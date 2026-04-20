@@ -604,15 +604,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               _formatPrice(_totalDeposit),
             ),
             const SizedBox(height: 12),
-            _buildDetailRow(
-              'Batas Sewa',
-              '${_totalRentalDuration} Hari',
-            ),
-            const SizedBox(height: 12),
-            _buildDetailRow(
-              'Biaya Keterlambatan',
-              '${_formatPrice(_totalLateFee)} / Hari',
-            ),
+            _buildDetailRow('Batas Sewa', '${_totalRentalDuration} Hari'),
           ],
           if (_selectedPaymentIndex == 0 && _shippingCost > 0) ...[
             const SizedBox(height: 12),
@@ -643,6 +635,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
           ),
           if (_orderIsRental) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Text(
+                'Biaya keterlambatan: ${_formatPrice(_totalLateFee)} / hari. ',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: const Color(0xFF92400E),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             Text(
               '*Biaya jaminan akan dikembalikan setelah barang kembali dalam kondisi baik.\n*Keterlambatan pengembalian akan dikenakan denda sesuai biaya keterlambatan per hari.',

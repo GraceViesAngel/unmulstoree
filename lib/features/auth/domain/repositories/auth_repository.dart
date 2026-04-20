@@ -1,4 +1,3 @@
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
@@ -85,44 +84,8 @@ class AuthRepository {
     );
   }
 
-  Future<void> signInWithGoogle() async {
-    try {
-      if (kIsWeb) {
-        await _supabase.auth.signInWithOAuth(OAuthProvider.google);
-      } else {
-        // 1. Setup Google Sign In
-        final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
-
-        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-        if (googleUser == null) {
-          throw 'Sign in aborted by user';
-        }
-
-        final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
-        final accessToken = googleAuth.accessToken;
-        final idToken = googleAuth.idToken;
-
-        if (idToken == null) {
-          throw 'No ID Token found.';
-        }
-
-        // 2. Sign in to Supabase with Google credentials
-        await _supabase.auth.signInWithIdToken(
-          provider: OAuthProvider.google,
-          idToken: idToken,
-          accessToken: accessToken,
-        );
-      }
-    } catch (e) {
-      debugPrint('Google Sign In Error: $e');
-      rethrow;
-    }
-  }
-
   Future<void> signOut() async {
     await _supabase.auth.signOut();
-    await GoogleSignIn().signOut();
   }
 
   User? get currentUser => _supabase.auth.currentUser;

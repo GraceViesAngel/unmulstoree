@@ -1,9 +1,18 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SuperAdminRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  String? _extractError(dynamic data) {
+    if (data is Map) {
+      final dynamic error = data['error'];
+      if (error != null) return error.toString();
+      final dynamic message = data['message'];
+      if (message != null) return message.toString();
+    }
+    return null;
+  }
 
   // --- 1. GLOBAL SETTINGS ---
 
@@ -35,14 +44,11 @@ class SuperAdminRepository {
 
   Future<void> updateGlobalSetting(String key, num value) async {
     try {
-      await _supabase.from('global_settings').upsert(
-        {
-          'key': key,
-          'value': value,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        onConflict: 'key',
-      );
+      await _supabase.from('global_settings').upsert({
+        'key': key,
+        'value': value,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'key');
     } catch (e) {
       debugPrint('Error updating global setting: $e');
       throw Exception('Gagal menyimpan pengaturan: $e');
@@ -64,40 +70,85 @@ class SuperAdminRepository {
 
   Future<List<Map<String, dynamic>>> getAdminsOnly() async {
     try {
-      final response = await _supabase.from('profiles').select().eq('role', 'admin').order('created_at', ascending: false);
-      return List<Map<String, dynamic>>.from(response);
+      final profiles = await _supabase
+          .from('profiles')
+          .select()
+          .eq('role', 'admin')
+          .order('updated_at', ascending: false);
+      return List<Map<String, dynamic>>.from(profiles);
     } catch (e) {
       debugPrint('Error fetching admins: $e');
       return [];
     }
   }
 
-  Future<void> createAdmin(String name, String email, String password) async {
-     try {
-       // Using secondary client to not log out superadmin
-       final secondaryApp = SupabaseClient(
-         dotenv.get('SUPABASE_URL'), 
-         dotenv.get('SUPABASE_ANON_KEY')
-       );
-       
-       final res = await secondaryApp.auth.signUp(
-         email: email, 
-         password: password,
-         data: {'full_name': name, 'role': 'admin'},
-       );
+  Future<void> updateAdmin(String id, String name, String phone) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'update-admin-profile',
+        body: {'id': id, 'name': name, 'phone': phone},
+      );
 
-       if (res.user != null) {
-          await _supabase.from('profiles').update({'role': 'admin'}).eq('id', res.user!.id);
-       }
-     } catch (e) {
-       debugPrint('Error creating admin: $e');
-       throw Exception('Gagal membuat admin: $e');
-     }
+      final errorMessage = _extractError(response.data);
+      if (errorMessage != null && errorMessage.isNotEmpty) {
+        throw Exception(errorMessage);
+      }
+
+      if (response.status != 200) {
+        throw Exception(errorMessage ?? 'Gagal mengubah data admin');
+      }
+    } catch (e) {
+      if (e is FunctionException) {
+        final details = e.details;
+        if (details is Map && details['error'] != null) {
+          throw Exception(details['error'].toString());
+        }
+        throw Exception('Gagal mengubah data admin (kode: ${e.status})');
+      }
+      debugPrint('Error updating admin: $e');
+      throw Exception('Gagal mengubah data admin: $e');
+    }
+  }
+
+  Future<void> createAdmin(String name, String email, String password) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'create-admin',
+        body: {'name': name, 'email': email, 'password': password},
+      );
+
+      final errorMessage = _extractError(response.data);
+      if (errorMessage != null && errorMessage.isNotEmpty) {
+        throw Exception(errorMessage);
+      }
+
+      if (response.status != 200) {
+        throw Exception(errorMessage ?? 'Gagal membuat admin');
+      }
+    } catch (e) {
+      if (e is FunctionException) {
+        final details = e.details;
+        if (details is Map && details['error'] != null) {
+          throw Exception(details['error'].toString());
+        }
+        if (e.status == 422) {
+          throw Exception(
+            'Email sudah terdaftar atau data admin tidak valid. Coba email lain.',
+          );
+        }
+        throw Exception('Gagal membuat admin (kode: ${e.status})');
+      }
+      debugPrint('Error creating admin: $e');
+      throw Exception('Gagal membuat admin: $e');
+    }
   }
 
   Future<void> updateUserRole(String profileId, String role) async {
     try {
-      await _supabase.from('profiles').update({'role': role}).eq('id', profileId);
+      await _supabase
+          .from('profiles')
+          .update({'role': role})
+          .eq('id', profileId);
     } catch (e) {
       debugPrint('Error updating role: $e');
       throw Exception('Gagal mengubah role: $e');
@@ -108,7 +159,10 @@ class SuperAdminRepository {
 
   Future<List<Map<String, dynamic>>> getAllProducts() async {
     try {
-      final response = await _supabase.from('products').select().order('created_at', ascending: false);
+      final response = await _supabase
+          .from('products')
+          .select()
+          .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('Error fetching products: $e');
@@ -129,14 +183,17 @@ class SuperAdminRepository {
   Future<void> saveProduct(Map<String, dynamic> productData) async {
     try {
       if (productData.containsKey('id') && productData['id'] != null) {
-        await _supabase.from('products').update(productData).eq('id', productData['id']);
+        await _supabase
+            .from('products')
+            .update(productData)
+            .eq('id', productData['id']);
       } else {
-         productData.remove('id');
+        productData.remove('id');
         await _supabase.from('products').insert(productData);
       }
     } catch (e) {
-       debugPrint('Error saving product: $e');
-       throw Exception('Gagal menyimpan produk: $e');
+      debugPrint('Error saving product: $e');
+      throw Exception('Gagal menyimpan produk: $e');
     }
   }
 }

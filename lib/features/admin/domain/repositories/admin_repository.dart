@@ -2,7 +2,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/models/admin_model.dart';
 import 'package:flutter/foundation.dart';
 
-
 class AdminRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -120,8 +119,26 @@ class AdminRepository {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Stream<List<Map<String, dynamic>>> watchOrdersRealtime() {
+    return _supabase
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((rows) => rows.map((e) => Map<String, dynamic>.from(e)).toList());
+  }
+
   Future<void> updateStatusPesanan(String orderId, String status) async {
     await _supabase.from('orders').update({'status': status}).eq('id', orderId);
+  }
+
+  Future<void> approveOrderAndReduceStock(
+    String orderId,
+    String nextStatus,
+  ) async {
+    await _supabase.rpc(
+      'pab_approve_order_reduce_stock',
+      params: {'p_order_id': orderId, 'p_next_status': nextStatus},
+    );
   }
 
   Future<void> setDisetujui(String orderId) async {
@@ -132,10 +149,10 @@ class AdminRepository {
   }
 
   Future<void> setDitolak(String orderId, {required String reason}) async {
-    await _supabase.from('orders').update({
-      'status': 'Ditolak',
-      'rejection_reason': reason.trim(),
-    }).eq('id', orderId);
+    await _supabase
+        .from('orders')
+        .update({'status': 'Ditolak', 'rejection_reason': reason.trim()})
+        .eq('id', orderId);
   }
 
   Future<void> setDikemas(String orderId) async {
@@ -262,10 +279,20 @@ class AdminRepository {
   Future<List<Map<String, dynamic>>> getDenda() async {
     final now = DateTime.now();
 
-    final orders = await _supabase
-        .from('orders')
-        .select()
-        .eq('status', 'Dalam Masa Sewa');
+    List<dynamic> orders;
+    try {
+      orders = await _supabase
+          .from('orders')
+          .select(
+            '*, profiles(full_name), order_items(product_title, quantity)',
+          )
+          .or('status.eq.Dalam Masa Sewa,status.eq.Terlambat');
+    } catch (_) {
+      orders = await _supabase
+          .from('orders')
+          .select()
+          .or('status.eq.Dalam Masa Sewa,status.eq.Terlambat');
+    }
 
     List<Map<String, dynamic>> keterlambatan = [];
     for (var order in orders) {
@@ -274,12 +301,14 @@ class AdminRepository {
         final deadline = DateTime.parse(returnDeadline);
 
         if (now.isAfter(deadline)) {
-          final hariTerlambat = now.difference(deadline).inDays;
+          final secondsLate = now.difference(deadline).inSeconds;
+          final hariTerlambat = (secondsLate / Duration.secondsPerDay).ceil();
           // Gunakan late_fee dari pesanan, default 20000 jika belum ada
-          final int orderLateFee = order['late_fee'] != null 
-              ? (order['late_fee'] as num).toInt() 
-              : 20000;
-          
+          final int savedLateFee = order['late_fee'] != null
+              ? (order['late_fee'] as num).toInt()
+              : 0;
+          final int orderLateFee = savedLateFee > 0 ? savedLateFee : 20000;
+
           final denda = hariTerlambat * orderLateFee;
           keterlambatan.add({
             ...order,

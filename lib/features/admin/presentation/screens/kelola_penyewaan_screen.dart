@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -25,6 +26,7 @@ class KelolaPenyewaanScreen extends StatefulWidget {
 }
 
 class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
+  static const String _rentalSeenKey = 'admin_last_seen_rental_pending_at';
   final AdminRepository _repo = AdminRepository();
   List<Map<String, dynamic>> _allPenyewaan = [];
   List<Map<String, dynamic>> _filteredPenyewaan = [];
@@ -72,6 +74,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           _loadError = null;
         });
         _applyFilters();
+        _markPendingAsSeen(penyewaan);
       }
     } catch (e, st) {
       debugPrint('KelolaPenyewaan _loadPenyewaan error: $e\n$st');
@@ -83,6 +86,27 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           _loadError = e.toString();
         });
       }
+    }
+  }
+
+  Future<void> _markPendingAsSeen(List<Map<String, dynamic>> orders) async {
+    DateTime? latestPending;
+    for (final order in orders) {
+      final isRental = order['is_rental'] == true;
+      final status = (order['status'] ?? '').toString().trim();
+      if (!isRental || status != 'Menunggu Verifikasi') continue;
+      final createdAt = DateTime.tryParse(
+        (order['created_at'] ?? '').toString(),
+      );
+      if (createdAt == null) continue;
+      if (latestPending == null || createdAt.isAfter(latestPending)) {
+        latestPending = createdAt;
+      }
+    }
+
+    if (latestPending != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_rentalSeenKey, latestPending.toIso8601String());
     }
   }
 
@@ -114,24 +138,48 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
     });
   }
 
+  int _calculateCurrentLateFine(Map<String, dynamic> order) {
+    final returnDeadlineRaw = order['return_deadline'];
+    if (returnDeadlineRaw == null) return 0;
+    final deadline = DateTime.tryParse(returnDeadlineRaw.toString());
+    if (deadline == null) return 0;
+    final now = DateTime.now();
+    if (!now.isAfter(deadline)) return 0;
+    final daysLate =
+        (now.difference(deadline).inSeconds / Duration.secondsPerDay).ceil();
+    final lateFeeRaw = (order['late_fee'] ?? 0) as num;
+    final lateFeePerDay = lateFeeRaw.toInt() > 0 ? lateFeeRaw.toInt() : 20000;
+    return daysLate * lateFeePerDay;
+  }
+
   Future<void> _updateStatus(
     String orderId,
     String status,
     String currentStatus, {
     bool isCancelApproved = false,
     String? rejectionReason,
+    int? lateFineAmount,
   }) async {
     try {
-      debugPrint('DEBUG _updateStatus: orderId=$orderId, newStatus=$status, currentStatus=$currentStatus, isCancelApproved=$isCancelApproved');
-      
+      debugPrint(
+        'DEBUG _updateStatus: orderId=$orderId, newStatus=$status, currentStatus=$currentStatus, isCancelApproved=$isCancelApproved',
+      );
+
       // Handle pembatalan
       if (isCancelApproved) {
         await _repo.updateStatusPesanan(orderId, 'Dibatalkan');
+      } else if (currentStatus == 'Menunggu Verifikasi' &&
+          status != 'Ditolak') {
+        await _repo.approveOrderAndReduceStock(orderId, status);
       } else if (status == 'Dalam Masa Sewa') {
         await _repo.mulaiSewa(orderId);
       } else if (status == 'Selesai') {
+        if ((lateFineAmount ?? 0) > 0) {
+          await _repo.validasiDenda(orderId, lateFineAmount!);
+        }
         await _repo.konfirmasiDikembalikan(orderId);
-      } else if (currentStatus == 'Menunggu Verifikasi' && status == 'Ditolak') {
+      } else if (currentStatus == 'Menunggu Verifikasi' &&
+          status == 'Ditolak') {
         final r = (rejectionReason ?? '').trim();
         if (r.length < 10) {
           throw Exception('Alasan penolakan minimal 10 karakter.');
@@ -155,6 +203,47 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           isError: true,
         );
       }
+    }
+  }
+
+  Future<void> _showLateFeeConfirmDialog({
+    required String orderId,
+    required String currentStatus,
+    required int denda,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Konfirmasi Pembayaran Denda',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        content: Text(
+          'Apakah pengguna telah membayar denda senilai Rp $denda?',
+          style: GoogleFonts.poppins(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Belum'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sudah'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _updateStatus(
+        orderId,
+        'Selesai',
+        currentStatus,
+        lateFineAmount: denda,
+      );
     }
   }
 
@@ -286,7 +375,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           ),
         ),
       ),
-);
+    );
   }
 
   Map<String, String>? _getNextStatusInfo(Map<String, dynamic> pesanan) {
@@ -294,7 +383,10 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
 
     debugPrint('DEBUG: currentStatus=$currentStatus');
 
-    if (currentStatus == 'Selesai' || currentStatus == 'Ditolak' || currentStatus == 'Dibatalkan' || currentStatus == 'Menunggu Pembatalan') {
+    if (currentStatus == 'Selesai' ||
+        currentStatus == 'Ditolak' ||
+        currentStatus == 'Dibatalkan' ||
+        currentStatus == 'Menunggu Pembatalan') {
       if (currentStatus == 'Menunggu Pembatalan') {
         return {'next': 'NEED_CANCEL_DIALOG', 'label': 'Proses Pembatalan'};
       }
@@ -328,7 +420,10 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
     }
   }
 
-  void _showCancelRequestDialog(Map<String, dynamic> pesanan, String cancelReason) {
+  void _showCancelRequestDialog(
+    Map<String, dynamic> pesanan,
+    String cancelReason,
+  ) {
     final String orderId = pesanan['id'];
     final String currentStatus = (pesanan['status'] ?? '').toString().trim();
     final String? previousStatus = pesanan['previous_status'] as String?;
@@ -421,7 +516,12 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                   onPressed: () {
                     final navigator = Navigator.of(context);
                     navigator.pop();
-                    _updateStatus(orderId, 'Dibatalkan', currentStatus, isCancelApproved: true);
+                    _updateStatus(
+                      orderId,
+                      'Dibatalkan',
+                      currentStatus,
+                      isCancelApproved: true,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
@@ -449,8 +549,8 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                     final navigator = Navigator.of(context);
                     navigator.pop();
                     _updateStatus(
-                      orderId, 
-                      previousStatus ?? 'Menunggu Verifikasi', 
+                      orderId,
+                      previousStatus ?? 'Menunggu Verifikasi',
                       currentStatus,
                       isCancelApproved: false,
                     );
@@ -476,48 +576,65 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
     final items = item['order_items'] as List? ?? [];
     final profiles = _profilesFromOrder(item['profiles']) ?? {};
     final status = item['status'] ?? 'Menunggu';
-
-    showDialog(
+    final denda = _calculateCurrentLateFine(item);
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Detail Sewa',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'ID: ${item['order_id_display']}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text('Status: $status'),
-              Text('Penyewa: ${profiles['full_name'] ?? 'Guest'}'),
-              const Divider(),
-              ...items.map(
-                (i) => Text('${i['product_title']} x ${i['quantity']}'),
-              ),
-              const Divider(),
-              if (item['return_deadline'] != null)
-                Text(
-                  'Deadline: ${item['return_deadline'].toString().substring(0, 10)}',
-                  style: const TextStyle(color: Colors.red),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-              Text(
-                'Total: Rp ${item['total_price']}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  'Detail Sewa',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('ID: ${item['order_id_display'] ?? '-'}'),
+                Text('Status: $status'),
+                Text('Penyewa: ${profiles['full_name'] ?? 'Guest'}'),
+                if (item['return_deadline'] != null)
+                  Text(
+                    'Deadline: ${item['return_deadline'].toString().substring(0, 10)}',
+                  ),
+                Text('Denda Berjalan: Rp $denda'),
+                const Divider(),
+                ...items.map(
+                  (i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('${i['product_title']} x ${i['quantity']}'),
+                  ),
+                ),
+                const Divider(),
+                Text(
+                  'Total: Rp ${item['total_price']}',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-        ],
       ),
     );
   }
@@ -529,7 +646,9 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           height: 44,
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            behavior: ScrollConfiguration.of(
+              context,
+            ).copyWith(scrollbars: false),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -577,6 +696,29 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSearchSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Cari nama penyewa / ID pesanan',
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+        ),
+      ),
     );
   }
 
@@ -631,10 +773,14 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
 
   void _showUpdateStatusDialog(Map<String, dynamic> pesanan) {
     final String orderId = pesanan['id'];
-    final String currentStatus = (pesanan['status'] ?? 'Menunggu').toString().trim();
+    final String currentStatus = (pesanan['status'] ?? 'Menunggu')
+        .toString()
+        .trim();
     final String? cancelReason = pesanan['cancellation_reason'] as String?;
 
-    debugPrint('DEBUG _showUpdateStatusDialog: orderId=$orderId, status=$currentStatus');
+    debugPrint(
+      'DEBUG _showUpdateStatusDialog: orderId=$orderId, status=$currentStatus',
+    );
 
     final info = _getNextStatusInfo(pesanan);
     debugPrint('DEBUG _getNextStatusInfo result: $info');
@@ -642,7 +788,8 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
     if (info == null) {
       _showSweetAlert(
         title: 'Info',
-        message: 'Status penyewaan "$currentStatus" tidak dapat diupdate melalui tombol ini.',
+        message:
+            'Status penyewaan "$currentStatus" tidak dapat diupdate melalui tombol ini.',
       );
       return;
     }
@@ -720,6 +867,16 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                   onPressed: () {
                     final navigator = Navigator.of(context);
                     navigator.pop();
+                    if (currentStatus == 'Dalam Masa Sewa' &&
+                        info['next'] == 'Selesai') {
+                      final denda = _calculateCurrentLateFine(pesanan);
+                      _showLateFeeConfirmDialog(
+                        orderId: orderId,
+                        currentStatus: currentStatus,
+                        denda: denda,
+                      );
+                      return;
+                    }
                     _updateStatus(orderId, info['next']!, currentStatus);
                   },
                   style: ElevatedButton.styleFrom(
@@ -792,14 +949,20 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
               const SizedBox(height: 8),
               Text(
                 _loadError!,
-                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Admin perlu policy RLS untuk orders & order_items — lihat '
                 'supabase/migrations/20260419130000_admin_rls_orders_profiles.sql',
-                style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -832,6 +995,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                _buildSearchSection(),
                 _buildFilterSection(),
                 Expanded(
                   child: _filteredPenyewaan.isEmpty
@@ -844,6 +1008,7 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                             final String status =
                                 pesanan['status'] ?? 'Menunggu';
                             final Color statusColor = _getStatusColor(status);
+                            final lateFine = _calculateCurrentLateFine(pesanan);
                             final items = pesanan['order_items'] as List? ?? [];
                             final String? firstImage = items.isNotEmpty
                                 ? items[0]['image_path']
@@ -989,6 +1154,29 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                                             ),
                                           ],
                                         ),
+                                        if (lateFine > 0) ...[
+                                          const SizedBox(height: 10),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 7,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFEF2F2),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'Terlambat - Denda berjalan Rp $lateFine',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                color: const Color(0xFFDC2626),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -1020,7 +1208,9 @@ class _KelolaPenyewaanScreenState extends State<KelolaPenyewaanScreen> {
                                             ),
                                           ),
                                         ),
-                                        if (status != 'Selesai' && status != 'Dibatalkan' && status != 'Diterima') ...[
+                                        if (status != 'Selesai' &&
+                                            status != 'Dibatalkan' &&
+                                            status != 'Diterima') ...[
                                           const SizedBox(width: 8),
                                           Expanded(
                                             flex: 2,

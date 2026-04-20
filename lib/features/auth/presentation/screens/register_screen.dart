@@ -4,8 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
-import '../../../../shared/widgets/social_button.dart';
-import '../../../../core/theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -93,209 +91,194 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: 24.0,
-          ).copyWith(bottom: bottomPadding > 0 ? 20 : 24, top: 24),
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Buat Akunmu',
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF1B1B1B),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
-                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                16,
+                24,
+                bottomInset > 0 ? 20 : 24,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 40,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Mulai jelajahi dan pesan produk Unmul Store\nsecara online.',
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF4B4B4B),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  'Nama',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1B1B1B),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                CustomTextField(
-                  controller: _nameController,
-                  hintText: 'Masukin nama lengkap',
-                  prefixIcon: const Icon(
-                    Icons.person,
-                    color: Color(0xFFCBD5E1),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Email',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1B1B1B),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                CustomTextField(
-                  controller: _emailController,
-                  hintText: 'Masukin email',
-                  prefixIcon: const Icon(Icons.email, color: Color(0xFFCBD5E1)),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-
-                const SizedBox(height: 24),
-                Text(
-                  'Password',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1B1B1B),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                CustomTextField(
-                  controller: _passwordController,
-                  hintText: 'Masukin password',
-                  prefixIcon: const Icon(Icons.lock, color: Color(0xFFCBD5E1)),
-                  obscureText: _obscurePassword,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-                PrimaryButton(
-                  text: 'Lanjutkan',
-                  isDisabled: !_isButtonEnabled,
-                  isLoading: _isLoading,
-                  onPressed: _onRegister,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    const Expanded(child: Divider(color: AppTheme.borderColor)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Or login with',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: const Color(0xFF94A3B8),
-                        ),
+                child: IntrinsicHeight(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Spacer(),
+                          Text(
+                            'Buat Akunmu',
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF1B1B1B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Mulai jelajahi dan pesan produk Unmul Store secara online.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF4B4B4B),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          Text(
+                            'Nama',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1B1B1B),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          CustomTextField(
+                            controller: _nameController,
+                            hintText: 'Masukin nama lengkap',
+                            prefixIcon: const Icon(
+                              Icons.person,
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            'Email',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1B1B1B),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          CustomTextField(
+                            controller: _emailController,
+                            hintText: 'Masukin email',
+                            prefixIcon: const Icon(
+                              Icons.email,
+                              color: Color(0xFFCBD5E1),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            'Password',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1B1B1B),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          CustomTextField(
+                            controller: _passwordController,
+                            hintText: 'Masukin password',
+                            prefixIcon: const Icon(
+                              Icons.lock,
+                              color: Color(0xFFCBD5E1),
+                            ),
+                            obscureText: _obscurePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                              onPressed: () {
+                                setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          PrimaryButton(
+                            text: 'Lanjutkan',
+                            isDisabled: !_isButtonEnabled,
+                            isLoading: _isLoading,
+                            onPressed: _onRegister,
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Sudah Memiliki Akun? ',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => context.push('/login'),
+                                child: Text(
+                                  'Masuk',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFFFCC00),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text.rich(
+                            TextSpan(
+                              text: 'By entering my email, I accept ',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: "Unmul Store's terms\n",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF1B1B1B),
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: 'and ',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    color: const Color(0xFF94A3B8),
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: 'personal data.',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF1B1B1B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-                    const Expanded(child: Divider(color: AppTheme.borderColor)),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SocialButton(
-                  text: 'Continue With Google',
-                  onPressed: () async {
-                    try {
-                      final authRepo = AuthRepository();
-                      await authRepo.signInWithGoogle();
-                      if (context.mounted) {
-                        context.go('/home');
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Google Sign-In gagal: $e')),
-                        );
-                      }
-                    }
-                  },
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Sudah Memiliki Akun? ',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => context.push('/login'),
-                        child: Text(
-                          'Masuk',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFFFCC00),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Text.rich(
-                    TextSpan(
-                      text: 'By entering my email, I accept ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                      children: [
-                        TextSpan(
-                          text: "Unmul Store's terms\n",
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1B1B1B),
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'and ',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'personal data.',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1B1B1B),
-                          ),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

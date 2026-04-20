@@ -15,12 +15,28 @@ class MonitoringDendaScreen extends StatefulWidget {
 class _MonitoringDendaScreenState extends State<MonitoringDendaScreen> {
   final AdminRepository _repo = AdminRepository();
   List<Map<String, dynamic>> _denda = [];
+  List<Map<String, dynamic>> _filteredDenda = [];
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+
+  String _formatPrice(int value) {
+    return value.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _loadDenda();
+    _searchController.addListener(_applyFilters);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadDenda() async {
@@ -29,14 +45,39 @@ class _MonitoringDendaScreenState extends State<MonitoringDendaScreen> {
       if (mounted) {
         setState(() {
           _denda = denda;
+          _filteredDenda = denda;
           _isLoading = false;
         });
+        _applyFilters();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.toLowerCase().trim();
+    setState(() {
+      _filteredDenda = _denda.where((item) {
+        if (query.isEmpty) return true;
+        final orderId = (item['order_id_display'] ?? item['id'] ?? '')
+            .toString()
+            .toLowerCase();
+        final profileRaw = item['profiles'];
+        String customerName = '';
+        if (profileRaw is Map && profileRaw['full_name'] != null) {
+          customerName = profileRaw['full_name'].toString().toLowerCase();
+        } else if (profileRaw is List && profileRaw.isNotEmpty) {
+          final first = profileRaw.first;
+          if (first is Map && first['full_name'] != null) {
+            customerName = first['full_name'].toString().toLowerCase();
+          }
+        }
+        return orderId.contains(query) || customerName.contains(query);
+      }).toList();
+    });
   }
 
   Future<void> _validasiDenda(String orderId, int denda) async {
@@ -91,7 +132,7 @@ class _MonitoringDendaScreenState extends State<MonitoringDendaScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _denda.isEmpty
+          : _filteredDenda.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -112,83 +153,162 @@ class _MonitoringDendaScreenState extends State<MonitoringDendaScreen> {
                 ],
               ),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _denda.length,
-              itemBuilder: (context, index) {
-                final item = _denda[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Cari order / nama pelanggan',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Order #${item['id'].toString().substring(0, 8)}',
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredDenda.length,
+                    itemBuilder: (context, index) {
+                      final item = _filteredDenda[index];
+                      final lateFeePerDay =
+                          (item['late_fee'] as num?)?.toInt() ?? 0;
+                      final profileRaw = item['profiles'];
+                      String customerName = 'Pelanggan';
+                      if (profileRaw is Map &&
+                          profileRaw['full_name'] != null) {
+                        customerName = profileRaw['full_name'].toString();
+                      } else if (profileRaw is List && profileRaw.isNotEmpty) {
+                        final first = profileRaw.first;
+                        if (first is Map && first['full_name'] != null) {
+                          customerName = first['full_name'].toString();
+                        }
+                      }
+                      final orderItems = item['order_items'];
+                      String productSummary = '-';
+                      if (orderItems is List && orderItems.isNotEmpty) {
+                        final first = orderItems.first;
+                        if (first is Map) {
+                          final title = (first['product_title'] ?? 'Produk')
+                              .toString();
+                          final qty = (first['quantity'] ?? 1).toString();
+                          productSummary = '$title x $qty';
+                        }
+                      }
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Order #${item['order_id_display'] ?? item['id'].toString().substring(0, 8)}',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Terlambat ${item['hari_terlambat']} hari',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'Terlambat ${item['hari_terlambat']} hari',
+                            const SizedBox(height: 8),
+                            Text(
+                              customerName,
                               style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 13,
+                                color: const Color(0xFF334155),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Durasi: ${item['duration'] ?? 7} hari',
-                        style: GoogleFonts.poppins(fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Denda: Rp ${item['denda'] ?? 0}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red,
+                            const SizedBox(height: 4),
+                            Text(
+                              productSummary,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Batas Pengembalian: ${item['return_deadline']?.toString().substring(0, 10) ?? '-'}',
+                              style: GoogleFonts.poppins(fontSize: 14),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Biaya keterlambatan: Rp ${_formatPrice(lateFeePerDay)} / hari',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Denda Berjalan: Rp ${_formatPrice((item['denda'] as num?)?.toInt() ?? 0)}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => _validasiDenda(
+                                  item['id'],
+                                  item['denda'] ?? 0,
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryColor,
+                                ),
+                                child: Text(
+                                  'Validasi Denda',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () =>
-                              _validasiDenda(item['id'], item['denda'] ?? 0),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                          ),
-                          child: Text(
-                            'Validasi Denda',
-                            style: GoogleFonts.poppins(color: Colors.black),
-                          ),
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ],
             ),
     );
   }
