@@ -1,4 +1,4 @@
-# <h1 align="center">Unmul Store</h1>
+# <h1 align="center">UNMUL STORE</h1>
 
 ---
 
@@ -120,9 +120,15 @@ Berikut alur penggunaan aplikasi Unmul Store:
 
 ## Logika Sistem
 
-Aplikasi ini dirancang dengan memisahkan antara tampilan dan logika agar lebih terstruktur. Setiap fitur memiliki tanggung jawab masing-masing, seperti pengelolaan data produk, proses pemesanan, hingga pengelolaan akun pengguna.
+Logika sistem digunakan untuk mengatur bagaimana data diproses dan bagaimana fitur dalam aplikasi berjalan. Bagian ini memastikan setiap aksi pengguna, seperti login, memilih produk, hingga melakukan pemesanan, dapat berjalan sesuai alur.
 
-Data yang digunakan dalam aplikasi dikelola secara terpusat sehingga memudahkan proses pencatatan dan pengolahan data. Dengan pendekatan ini, aplikasi menjadi lebih mudah dikembangkan dan dipahami.
+Setiap fitur memiliki logika masing-masing, misalnya:
+- **auth** → mengatur login dan validasi pengguna  
+- **product** → menampilkan data produk  
+- **cart** → menyimpan produk sementara  
+- **order** → memproses checkout dan status pesanan  
+
+Aplikasi ini juga terhubung dengan Supabase, sehingga data seperti produk, pengguna, dan pesanan dapat disimpan dan diambil secara langsung dari database.
 
 ---
 
