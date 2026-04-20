@@ -16,47 +16,6 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
-  void initState() {
-    super.initState();
-    _checkSession();
-  }
-
-  Future<void> _checkSession() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final session = Supabase.instance.client.auth.currentSession;
-      if (session != null) {
-        final user = session.user;
-        String? role = user.userMetadata?['role'] as String?;
-        if (role == null) {
-          try {
-            final profileData = await Supabase.instance.client
-                .from('profiles')
-                .select('role')
-                .eq('id', user.id)
-                .maybeSingle();
-            if (profileData != null) {
-              role = profileData['role'] as String?;
-            }
-          } catch (e) {
-            debugPrint('Error fetching role: $e');
-          }
-        }
-        if (mounted) {
-          if (role == 'admin' || role == 'superadmin') {
-            await goDeferred(
-              context,
-              '/admin-dashboard',
-              extra: {'role': role},
-            );
-          } else {
-            await goDeferred(context, '/home');
-          }
-        }
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
