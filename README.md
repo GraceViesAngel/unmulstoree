@@ -105,7 +105,7 @@ Dalam pengembangan aplikasi ini, kami menggunakan beberapa widget utama dari Flu
 
 ## Alur Aplikasi
 
-Berikut alur penggunaan aplikasi Unmul Store:
+### Alur Pengguna (User)
 
 1. Pengguna membuka aplikasi  
 2. Login atau melakukan registrasi  
@@ -115,6 +115,31 @@ Berikut alur penggunaan aplikasi Unmul Store:
 6. Melakukan checkout  
 7. Melihat status pesanan  
 8. Selesai  
+
+---
+
+### Alur Admin
+
+1. Admin login ke dalam sistem  
+2. Masuk ke halaman dashboard admin  
+3. Mengelola data produk (tambah, edit, hapus)  
+4. Melihat dan mengelola pesanan pengguna  
+5. Memperbarui status pesanan (diproses, selesai, dll)  
+6. Menyimpan perubahan data  
+7. Selesai  
+
+---
+
+### Alur Super Admin
+
+1. Super admin login ke dalam sistem  
+2. Masuk ke halaman dashboard super admin  
+3. Mengelola data sistem secara keseluruhan  
+4. Mengatur data admin dan pengguna  
+5. Mengontrol data produk dan pesanan  
+6. Melakukan pengaturan tambahan jika diperlukan  
+7. Selesai  
+
 
 ---
 
