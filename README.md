@@ -35,7 +35,7 @@
 |-----------|----------|------------|----------------------|
 | Taufik Ramadhani | 2409116001 | Sistem Informasi A '24 | [![GitHub](https://img.shields.io/badge/-superamarr-black?logo=github&style=flat-square)](https://github.com/superamarr) |
 | Grace Vies Angel | 2409116005 | Sistem Informasi A '24 | [![GitHub](https://img.shields.io/badge/-GraceViesAngel-black?logo=github&style=flat-square)](https://github.com/GraceViesAngel) |
-| Ahmad Sepriza | 2409116025 | Sistem Informasi A '24 | [![GitHub](https://img.shields.io/badge/-gfarlz-black?logo=github&style=flat-square)](https://github.com/gfarlz) |
+| Ahmad Sepriza | 2409116025 | Sistem Informasi A '24 | [![GitHub](https://img.shields.io/badge/-ahmdsepriza-black?logo=github&style=flat-square)](https://github.com/ahmdsepriza) |
 | Najmi Hafizh Mauludan Zain | 2409116028 | Sistem Informasi A '24 | [![GitHub](https://img.shields.io/badge/-NajmiHafizh-black?logo=github&style=flat-square)](https://github.com/NajmiHafizh) |
 
 ---
