@@ -190,15 +190,15 @@ Fitur otentikasi komprehensif bagi segala keperluan portal masuk kampus Store.
 | Identifikasi Layar | Komponen / Widget Penting | Tampilan |
 | :--- | :--- | :--- |
 | **Welcome / Splash** | Transisi logo, Deteksi Session awal | *[Gambar Welcome]* |
-| **Login & Register** | TextField kustom berseni, Validasi Panjang, Regex Email | *[Gambar Login]* |
-| **Forgot Password** | Kirim Reset Link ke Email User | *[Gambar Forgot Pwd]* |
+| **Login & Register** | TextField kustom berseni, Validasi Panjang, Regex Email | <img width="325" height="701" alt="image" src="https://github.com/user-attachments/assets/f769977c-dab3-412b-9739-0c81d91c00b6" /> |
+| **Forgot Password** | Kirim Reset Link ke Email User | <img width="319" height="695" alt="image" src="https://github.com/user-attachments/assets/8b98b9be-599b-49ce-97fe-0aaa7de87dd8" /> |
 
 ### 8.2 Modul Beranda & Produk (`lib/features/home` & `product`)
 
 | Identifikasi Layar | Komponen / Widget Penting | Tampilan |
 | :--- | :--- | :--- |
-| **Beranda Layar Utama** | `CarouselSlider` promo Banner, `GridView` untuk etalase katalog, Kategori badge | *[Gambar Beranda]* |
-| **Detail Produk & Sheet** | Gambar penuh `SliverAppBar`, Pilihan variasi dengan tombol aksi (Beli / Sewa) -> Membuka `BottomSheet` ringkasan. | *[Gambar Produk]* |
+| **Beranda Layar Utama** | `CarouselSlider` promo Banner, `GridView` untuk etalase katalog, Kategori badge | <img width="318" height="698" alt="image" src="https://github.com/user-attachments/assets/f54c9eec-9336-41dc-a601-5c7804de8087" /> |
+| **Detail Produk & Sheet** | Gambar penuh `SliverAppBar`, Pilihan variasi dengan tombol aksi (Beli / Sewa) -> Membuka `BottomSheet` ringkasan. | <img width="320" height="699" alt="image" src="https://github.com/user-attachments/assets/98d6bfc9-76e9-4848-84b9-78d7df5593ff" /> |
 
 ### 8.3 Modul Pemesanan & Keranjang (`lib/features/order`)
 
@@ -206,9 +206,9 @@ Mekanisme checkout dengan sistem sewa yang menuntut pendataan tambahan (Lama Har
 
 | Identifikasi Layar | Komponen / Widget Penting | Tampilan |
 | :--- | :--- | :--- |
-| **Keranjang Belanja** | List panjang, hitungan Subtotal harga (jika sewa + Rp.50.000 deposit x Jumlah) | *[Gambar Keranjang]* |
-| **Checkout/Pembayaran** | *ListTile* form Alamat Wajib, Rincian Kalkulasi Harga Ongkir Cepat / Reguler | *[Gambar Checkout]* |
-| **Status Pesanan**| Tampilan historis jejak resi status pesanan (*Diproses*, *Dikirim* dsb) dengan `Badge` | *[Gambar Transaksi]* |
+| **Keranjang Belanja** | List panjang, hitungan Subtotal harga (jika sewa + Rp.50.000 deposit x Jumlah) | <img width="319" height="695" alt="image" src="https://github.com/user-attachments/assets/4a301c02-a1a5-43d0-b94a-9d354078f458" /> |
+| **Checkout/Pembayaran** | *ListTile* form Alamat Wajib, Rincian Kalkulasi Harga Ongkir Cepat / Reguler | <img width="324" height="695" alt="image" src="https://github.com/user-attachments/assets/eb8458f8-3beb-46d4-aa1b-9ca0ebdb543e" /> |
+| **Status Pesanan**| Tampilan historis jejak resi status pesanan (*Diproses*, *Dikirim* dsb) dengan `Badge` | <img width="313" height="694" alt="image" src="https://github.com/user-attachments/assets/ae0eb0a6-4da0-4079-a4c3-15c2ff6fd9c3" /> |
 
 ### 8.4 Modul Admin & Superadmin (`lib/features/admin`)
 
@@ -216,10 +216,10 @@ Khusus untuk peran istimewa. Mengelola verifikasi pengguna.
 
 | Identifikasi Layar | Komponen / Widget Penting | Tampilan |
 | :--- | :--- | :--- |
-| **Panel Pesanan (Admin)** | `TabBarView` memuat status antrian "Masuk", "Sedang Dikirim", "Selesai" | *[Gambar Admin]* |
+| **Panel Pesanan (Admin)** | `TabBarView` memuat status antrian "Masuk", "Sedang Dikirim", "Selesai" | <img width="319" height="697" alt="image" src="https://github.com/user-attachments/assets/544580ae-8cd5-4221-926c-749d948b9be9" /> |
 | **Monitor Denda (Admin)** | List keterlambatan pengguna. Tombol memotong deposit denda | *[Gambar Denda]* |
-| **Kelola Sistem (Sp-Admin)** | Edit nilai dasar denda harian (Rp 20.000) per aplikasi seluruh sistem | *[Gambar S.Admin]* |
-| **Kelola Admin & Produk** | Menghapus akses `role`. **Optimistic UI Update** untuk percepat loading render. | *[Gambar Kelola Admin]* |
+| **Kelola Sistem (Sp-Admin)** | Edit nilai dasar denda harian (Rp 20.000) per aplikasi seluruh sistem | |
+| **Kelola Admin & Produk** | Menghapus akses `role`. **Optimistic UI Update** untuk percepat loading render. | <img width="319" height="698" alt="image" src="https://github.com/user-attachments/assets/81486335-1e0b-453d-9002-d266d3f34161" /> <img width="320" height="691" alt="image" src="https://github.com/user-attachments/assets/b47373b8-028c-4187-bee2-25bfc95a2b6f" /> |
 
 ---
 
