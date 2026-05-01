@@ -198,7 +198,7 @@ Fitur otentikasi komprehensif bagi segala keperluan portal masuk kampus Store.
 | Identifikasi Layar | Komponen / Widget Penting | Tampilan |
 | :--- | :--- | :--- |
 | **Beranda Layar Utama** | `CarouselSlider` promo Banner, `GridView` untuk etalase katalog, Kategori badge | <img width="318" height="698" alt="image" src="https://github.com/user-attachments/assets/f54c9eec-9336-41dc-a601-5c7804de8087" /> |
-| **Detail Produk & Sheet** | Gambar penuh `SliverAppBar`, Pilihan variasi dengan tombol aksi (Beli / Sewa) -> Membuka `BottomSheet` ringkasan. | <img width="320" height="699" alt="image" src="https://github.com/user-attachments/assets/98d6bfc9-76e9-4848-84b9-78d7df5593ff" /> |
+| **Detail Produk & Sheet** | Gambar penuh `SliverAppBar`, Pilihan variasi dengan tombol aksi (Beli / Sewa) -> Membuka `BottomSheet` ringkasan. | <img width="318" height="698" alt="image" src="https://github.com/user-attachments/assets/f54c9eec-9336-41dc-a601-5c7804de8087" /> <img width="320" height="699" alt="image" src="https://github.com/user-attachments/assets/98d6bfc9-76e9-4848-84b9-78d7df5593ff" /> |
 
 ### 8.3 Modul Pemesanan & Keranjang (`lib/features/order`)
 
