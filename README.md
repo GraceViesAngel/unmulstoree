@@ -219,7 +219,7 @@ Khusus untuk peran istimewa. Mengelola verifikasi pengguna.
 | **Panel Pesanan (Admin)** | `TabBarView` memuat status antrian "Masuk", "Sedang Dikirim", "Selesai" | <img width="319" height="697" alt="image" src="https://github.com/user-attachments/assets/544580ae-8cd5-4221-926c-749d948b9be9" /> |
 | **Monitor Denda (Admin)** | List keterlambatan pengguna. Tombol memotong deposit denda | <img width="315" height="694" alt="image" src="https://github.com/user-attachments/assets/f7eadfdd-797d-4a9c-bffc-6582083e3339" /> |
 | **Kelola Sistem (Sp-Admin)** | Edit nilai dasar denda harian (Rp 20.000) per aplikasi seluruh sistem | <img width="324" height="697" alt="image" src="https://github.com/user-attachments/assets/333d917a-98f3-4f71-8240-a533f83472eb" /> |
-| **Kelola Admin & Produk** | Menghapus akses `role`. **Optimistic UI Update** untuk percepat loading render. | <img width="319" height="698" alt="image" src="https://github.com/user-attachments/assets/81486335-1e0b-453d-9002-d266d3f34161" /> | <img width="320" height="691" alt="image" src="https://github.com/user-attachments/assets/b47373b8-028c-4187-bee2-25bfc95a2b6f" /> |
+| **Kelola Admin & Produk** | Menghapus akses `role`. **Optimistic UI Update** untuk percepat loading render. | <img width="319" height="698" alt="image" src="https://github.com/user-attachments/assets/81486335-1e0b-453d-9002-d266d3f34161" /> <img width="320" height="691" alt="image" src="https://github.com/user-attachments/assets/b47373b8-028c-4187-bee2-25bfc95a2b6f" /> |
 
 ---
 
