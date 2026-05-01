@@ -189,7 +189,7 @@ Fitur otentikasi komprehensif bagi segala keperluan portal masuk kampus Store.
 
 | Identifikasi Layar | Komponen / Widget Penting | Tampilan |
 | :--- | :--- | :--- |
-| **Welcome / Splash** | Transisi logo, Deteksi Session awal | *[Gambar Welcome]* |
+| **Welcome / Splash** | Transisi logo, Deteksi Session awal | <img width="234" height="509" alt="image" src="https://github.com/user-attachments/assets/7ff29d13-01a1-40cd-99e7-3c30da464f7c" /> |
 | **Login & Register** | TextField kustom berseni, Validasi Panjang, Regex Email | <img width="325" height="701" alt="image" src="https://github.com/user-attachments/assets/f769977c-dab3-412b-9739-0c81d91c00b6" /> |
 | **Forgot Password** | Kirim Reset Link ke Email User | <img width="319" height="695" alt="image" src="https://github.com/user-attachments/assets/8b98b9be-599b-49ce-97fe-0aaa7de87dd8" /> |
 
