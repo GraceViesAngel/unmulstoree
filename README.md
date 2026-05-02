@@ -94,7 +94,6 @@ unmulstoree/
 │       └── widgets/                 # Kumpulan widget UI yang dapat digunakan ulang
 │
 ├── pubspec.yaml                     # Konfigurasi dependensi
-└── DOCUMENTATION.md                 # Dokumentasi proyek
 ```
 
 ---
@@ -108,13 +107,13 @@ Pola yang digunakan berfokus pada **Pemisahan Logika (Separation of Concerns)**,
 │                 View (Screens)                      │
 │   Home Screen ─ Cart Screen ─ Admin Dashboard       │
 └─────────────────┬───────────────────────────────────┘
-                  │  Memanggil Fungsi Asinkron / Menerima Data
+                  │  
                   ▼
 ┌─────────────────────────────────────────────────────┐
 │            Repositories (Domain/Data)               │
 │   CartRepository │ SuperAdminRepository │ dsb.      │
 └─────────────────┬───────────────────────────────────┘
-                  │  Query CRUD API
+                  │  
                   ▼
 ┌─────────────────────────────────────────────────────┐
 │                 Backend (Supabase)                  │
