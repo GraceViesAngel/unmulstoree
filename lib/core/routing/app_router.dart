@@ -22,6 +22,7 @@ import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/kelola_pesanan_screen.dart';
 import '../../features/admin/presentation/screens/kelola_penyewaan_screen.dart';
 import '../../features/admin/presentation/screens/monitoring_denda_screen.dart';
+import '../../features/admin/presentation/screens/admin_notification_screen.dart';
 import '../../features/admin/presentation/screens/kelola_banner_screen.dart';
 import '../../features/admin/presentation/screens/superadmin/superadmin_main_screen.dart';
 import '../../features/admin/presentation/screens/superadmin/tambah_produk_screen.dart';
@@ -204,6 +205,10 @@ class AppRouter {
       GoRoute(
         path: '/admin-banners',
         builder: (context, state) => const KelolaBannerScreen(),
+      ),
+      GoRoute(
+        path: '/admin-notifikasi',
+        builder: (context, state) => const AdminNotificationScreen(),
       ),
       GoRoute(
         path: '/superadmin',

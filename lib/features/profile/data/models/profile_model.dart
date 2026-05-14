@@ -5,6 +5,7 @@ class ProfileModel {
   final String? avatarUrl;
   final String? city;
   final String? street;
+  final String? fcmToken;
 
   ProfileModel({
     required this.id,
@@ -13,6 +14,7 @@ class ProfileModel {
     this.avatarUrl,
     this.city,
     this.street,
+    this.fcmToken,
   });
 
   String get fullAddress {
@@ -30,6 +32,7 @@ class ProfileModel {
       avatarUrl: map['avatar_url'],
       city: map['city'],
       street: map['street'],
+      fcmToken: map['fcm_token'],
     );
   }
 

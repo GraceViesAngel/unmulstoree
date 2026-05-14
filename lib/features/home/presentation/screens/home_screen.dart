@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,6 +21,32 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = 'Semua';
   final ProductRepository _productRepository = ProductRepository();
   final HomeBannerRepository _bannerRepository = HomeBannerRepository();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _searchQuery = _searchController.text.trim();
+      });
+    });
+  }
 
   Widget _buildCategoryChip(String label) {
     bool isSelected = _selectedCategory == label;
@@ -54,7 +81,10 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: FutureBuilder<List<ProductModel>>(
-          future: _productRepository.getProductsByCategory(_selectedCategory),
+          future: _productRepository.getProductsFiltered(
+            category: _selectedCategory == 'Semua' ? null : _selectedCategory,
+            searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+          ),
           builder: (context, snapshot) {
             return CustomScrollView(
               physics: const ClampingScrollPhysics(),
@@ -79,17 +109,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // Bunga Logo (Top Left)
+                              // UNMUL Logo (Left)
                               SizedBox(
-                                width: 32,
-                                height: 32,
-                                child: SvgPicture.asset(
-                                  'assets/icons/logo.svg',
+                                width: 48,
+                                height: 48,
+                                child: Image.asset(
+                                  'assets/icons/Universitas-Mulawarman.png',
                                   fit: BoxFit.contain,
-                                  colorFilter: const ColorFilter.mode(
-                                    AppTheme.primaryColor,
-                                    BlendMode.srcIn,
-                                  ),
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.school,
+                                      color: AppTheme.textColor,
+                                      size: 28,
+                                    );
+                                  },
                                 ),
                               ),
 
@@ -141,20 +174,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
 
-                              // Notifikasi (Logo Unmul)
+                              // PAB Logo (Right)
                               SizedBox(
                                 width: 32,
                                 height: 32,
-                                child: Image.asset(
-                                  'icons/Universitas-Mulawarman.png',
+                                child: SvgPicture.asset(
+                                  'assets/icons/logo.svg',
                                   fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.school,
-                                      color: AppTheme.textColor,
-                                      size: 20,
-                                    );
-                                  },
+                                  colorFilter: const ColorFilter.mode(
+                                    AppTheme.primaryColor,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             ],
@@ -174,10 +204,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
 
-                        // 2. Search Bar
+                        // 2. Search Bar (debounced 300ms)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                           child: TextField(
+                            controller: _searchController,
                             decoration: InputDecoration(
                               hintText: 'Cari Produk',
                               hintStyle: GoogleFonts.poppins(

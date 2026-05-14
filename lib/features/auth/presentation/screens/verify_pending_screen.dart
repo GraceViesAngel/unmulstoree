@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -55,6 +56,7 @@ class _VerifyPendingScreenState extends State<VerifyPendingScreen> {
       await Supabase.instance.client.auth.resend(
         type: OtpType.email,
         email: widget.email,
+        emailRedirectTo: kIsWeb ? null : 'io.supabase.pab://login-callback/',
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

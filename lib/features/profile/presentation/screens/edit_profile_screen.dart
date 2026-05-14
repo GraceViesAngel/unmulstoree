@@ -1,11 +1,17 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/constants/cities.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../shared/widgets/camera_capture_screen.dart';
 import '../../../../shared/widgets/confirm_action_sheet.dart';
 import '../../data/models/profile_model.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -25,7 +31,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   ProfileModel? _profile;
   bool _isLoading = true;
   bool _uploadingAvatar = false;
-  String? _selectedCity;
+  bool _loadingLocation = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -45,7 +51,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _profile = profile;
         _nameController.text = profile.fullName ?? '';
         _phoneController.text = phoneWithoutPrefix;
-        _selectedCity = profile.city;
         _addressController.text = profile.street ?? '';
         _isLoading = false;
       });
@@ -79,9 +84,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return 'Alamat maksimal 300 karakter.';
     }
 
-    if (_selectedCity == null || _selectedCity!.isEmpty) {
-      return 'Kota/kabupaten wajib dipilih.';
-    }
     return null;
   }
 
@@ -120,7 +122,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       id: profileId,
       fullName: _nameController.text.trim(),
       phoneNumber: phoneNumber,
-      city: _selectedCity,
       street: _addressController.text.trim(),
       avatarUrl: _profile?.avatarUrl,
     );
@@ -128,6 +129,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile berhasil diperbarui.')),
+      );
+      NotificationService.instance.show(
+        id: 1,
+        title: 'Profil Diperbarui',
+        body: 'Data profil Anda berhasil diperbarui.',
       );
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       context.go('/home?t=$timestamp');
@@ -146,11 +152,119 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    final x = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      imageQuality: 85,
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Pilih Sumber Foto',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1B1B1B),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFF1B1B1B)),
+                title: Text(
+                  'Kamera',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1B1B1B),
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Color(0xFF1B1B1B)),
+                title: Text(
+                  'Galeri',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1B1B1B),
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Batal',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+    if (source == null || !mounted) return;
+
+    XFile? x;
+    if (source == ImageSource.camera) {
+      final useNativeCamera = !kIsWeb && switch (defaultTargetPlatform) {
+        TargetPlatform.android || TargetPlatform.iOS => true,
+        _ => false,
+      };
+      if (useNativeCamera) {
+        x = await _imagePicker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          imageQuality: 85,
+        );
+      } else {
+        x = await Navigator.push<XFile>(
+          context,
+          MaterialPageRoute(builder: (_) => const CameraCaptureScreen()),
+        );
+        if (x == null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Kamera tidak tersedia. Beralih ke galeri.')),
+          );
+          x = await _imagePicker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 1024,
+            imageQuality: 85,
+          );
+        }
+      }
+    } else {
+      x = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+    }
     if (x == null || !mounted) return;
 
     setState(() => _uploadingAvatar = true);
@@ -167,7 +281,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         id: _profile!.id,
         fullName: _profile!.fullName,
         phoneNumber: _profile!.phoneNumber,
-        city: _profile!.city,
         street: _profile!.street,
         avatarUrl: url,
       );
@@ -191,7 +304,97 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-@override
+  Future<void> _getCurrentLocation() async {
+    setState(() => _loadingLocation = true);
+    try {
+      if (!kIsWeb) {
+        final permission = await Geolocator.requestPermission();
+        if (!mounted) return;
+
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Izin lokasi tidak diberikan.')),
+            );
+          }
+          return;
+        }
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      if (!mounted) return;
+
+      String address;
+      try {
+        final placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+        if (placemarks.isNotEmpty) {
+          final p = placemarks.first;
+          final parts = <String>[
+            if (p.street != null && p.street!.isNotEmpty) p.street!,
+            if (p.subLocality != null &&
+                p.subLocality!.isNotEmpty &&
+                p.subLocality != p.street)
+              p.subLocality!,
+            if (p.locality != null && p.locality!.isNotEmpty) p.locality!,
+            if (p.administrativeArea != null &&
+                p.administrativeArea!.isNotEmpty)
+              p.administrativeArea!,
+          ];
+          address = parts.join(', ');
+        } else {
+          address = '${position.latitude}, ${position.longitude}';
+        }
+      } catch (_) {
+        try {
+          final res = await http.get(
+            Uri.parse(
+              'https://nominatim.openstreetmap.org/reverse'
+              '?lat=${position.latitude}&lon=${position.longitude}'
+              '&format=json&addressdetails=1',
+            ),
+            headers: {
+              'User-Agent': 'pab-flutter-app/1.0',
+              'Accept-Language': 'id',
+            },
+          );
+          if (res.statusCode == 200) {
+            final data = jsonDecode(res.body) as Map<String, dynamic>;
+            final displayName = data['display_name'] as String?;
+            address = displayName ?? '${position.latitude}, ${position.longitude}';
+          } else {
+            address = '${position.latitude}, ${position.longitude}';
+          }
+        } catch (_) {
+          address = '${position.latitude}, ${position.longitude}';
+        }
+      }
+      _addressController.text = address;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lokasi berhasil didapatkan.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mendapatkan lokasi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingLocation = false);
+    }
+  }
+
+  @override
   void dispose() {
     _phoneController.dispose();
     _nameController.dispose();
@@ -333,15 +536,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               hintText: '812345678901',
             ),
             const SizedBox(height: 24),
-            _buildFieldLabel('Kota / Kabupaten'),
-            _buildCityDropdown(),
-            const SizedBox(height: 24),
             _buildFieldLabel('Alamat Lengkap'),
             _buildTextField(
               controller: _addressController,
               maxLines: 4,
               maxLength: 300,
               hintText: 'Nama jalan, RT/RW, kode pos, dll',
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loadingLocation ? null : _getCurrentLocation,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFFFCC00)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: _loadingLocation
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location, color: Color(0xFF1B1B1B)),
+                label: Text(
+                  _loadingLocation
+                      ? 'Mendapatkan lokasi...'
+                      : 'Gunakan lokasi anda sekarang',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF1B1B1B),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -431,41 +662,4 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildCityDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: DropdownButton<String>(
-        value: _selectedCity,
-        isExpanded: true,
-        hint: Text(
-          'Pilih kota/kabupaten',
-          style: GoogleFonts.poppins(
-            color: const Color(0xFF64748B).withValues(alpha: 0.5),
-          ),
-        ),
-        underline: const SizedBox(),
-        items: Cities.names.map((city) {
-          final cityData = Cities.getByName(city);
-          return DropdownMenuItem(
-            value: city,
-            child: Text(
-              city,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: const Color(0xFF1B1B1B),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          );
-        }).toList(),
-        onChanged: (value) {
-          setState(() => _selectedCity = value);
-        },
-      ),
-    );
-  }
 }

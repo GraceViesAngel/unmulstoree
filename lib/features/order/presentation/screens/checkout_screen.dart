@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/cities.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../shared/widgets/confirm_action_sheet.dart';
+import '../../../../shared/widgets/primary_button.dart';
 import '../../../home/data/models/product_model.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../../../profile/domain/repositories/profile_repository.dart';
-import '../../domain/repositories/order_repository.dart';
-import '../../domain/repositories/cart_repository.dart';
 import '../../data/models/cart_item_model.dart';
-import '../../../../shared/widgets/confirm_action_sheet.dart';
+import '../../data/models/order_model.dart';
+import '../../domain/repositories/cart_repository.dart';
+import '../../domain/repositories/order_repository.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final String? from;
@@ -746,12 +751,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!mounted) return;
     if (profile == null ||
         (profile.fullName ?? '').trim().isEmpty ||
-        (profile.phoneNumber ?? '').trim().isEmpty ||
-        (profile.city ?? '').trim().isEmpty) {
+        (profile.phoneNumber ?? '').trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Lengkapan Profil: Nama, Nomor HP, dan Kota wajib diisi.',
+            'Lengkapi Profil: Nama dan Nomor HP wajib diisi.',
           ),
         ),
       );
@@ -808,6 +812,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pesanan Berhasil Dibuat!')),
         );
+
+        NotificationService.instance.show(
+          id: orderId.hashCode,
+          title: 'Pesanan Berhasil',
+          body: 'Pesanan #${orderId?.substring(0, 8)} berhasil dibuat. '
+              'Silakan tunggu konfirmasi dari admin.',
+        );
+
+        if (_orderIsRental && orderId != null) {
+          NotificationService.instance.schedule(
+            id: orderId.hashCode + 1,
+            title: 'Pengingat Pengembalian',
+            body: 'Masa sewa pesanan #${orderId.substring(0, 8)} '
+                'akan segera berakhir. Jangan lupa kembalikan alat tepat waktu.',
+            scheduledDate: DateTime.now().add(const Duration(hours: 1)),
+          );
+        }
 
         context.go(
           '/order-status',

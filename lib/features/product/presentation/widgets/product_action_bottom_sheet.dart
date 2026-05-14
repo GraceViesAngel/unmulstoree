@@ -79,9 +79,7 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
         profile.fullName == null ||
         profile.fullName!.isEmpty ||
         profile.phoneNumber == null ||
-        profile.phoneNumber!.isEmpty ||
-        profile.city == null ||
-        profile.city!.isEmpty) {
+        profile.phoneNumber!.isEmpty) {
       if (mounted) {
         showDialog(
           context: context,
@@ -91,7 +89,7 @@ class _ProductActionBottomSheetState extends State<ProductActionBottomSheet> {
               style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
             ),
             content: Text(
-              'Silakan lengkapi Nama Lengkap, Nomor HP, dan Kota Anda sebelum melakukan transaksi.',
+              'Silakan lengkapi Nama Lengkap dan Nomor HP Anda sebelum melakukan transaksi.',
               style: GoogleFonts.poppins(),
             ),
             actions: [

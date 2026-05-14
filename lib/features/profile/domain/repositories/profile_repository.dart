@@ -21,7 +21,15 @@ class ProfileRepository {
           bytes,
           fileOptions: FileOptions(contentType: contentType, upsert: true),
         );
-    return _supabase.storage.from('avatars').getPublicUrl(path);
+    final baseUrl = _supabase.storage.from('avatars').getPublicUrl(path);
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return '$baseUrl?t=$ts';
+  }
+
+  Future<void> saveFcmToken(String token) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+    await _supabase.from('profiles').update({'fcm_token': token}).eq('id', userId);
   }
 
   Future<ProfileModel?> getCurrentProfile() async {

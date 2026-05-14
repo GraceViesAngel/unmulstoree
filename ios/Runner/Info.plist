@@ -7,7 +7,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Pab</string>
+		<string>UNMUL STORE UAS</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>pab</string>
+		<string>UNMUL STORE UAS</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -68,5 +68,11 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSCameraUsageDescription</key>
+		<string>Izinkan akses kamera untuk mengambil foto profil</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Izinkan akses galeri untuk memilih foto profil</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Izinkan akses lokasi untuk mengisi alamat secara otomatis</string>
 	</dict>
 </plist>

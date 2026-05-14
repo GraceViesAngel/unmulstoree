@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "261716170251",
+    "project_id": "unmulstore-514fb",
+    "storage_bucket": "unmulstore-514fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:261716170251:android:927eecdb0c5b98b1b4190e",
+        "android_client_info": {
+          "package_name": "com.example.pab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCw8_CnN4t2Fjt3OUI4QKcsm6wBOR59buw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

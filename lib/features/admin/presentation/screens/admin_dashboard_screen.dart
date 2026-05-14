@@ -265,6 +265,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           color: Colors.teal,
                           onTap: () => context.push('/admin-banners'),
                         ),
+                        _buildProfessionalMenu(
+                          icon: Icons.notifications_active_outlined,
+                          title: 'Kirim Notifikasi',
+                          subtitle: 'Push notification ke semua pengguna',
+                          color: Colors.orange,
+                          onTap: () => context.push('/admin-notifikasi'),
+                        ),
 
                         if (_userRole == 'superadmin') ...[
                           const SizedBox(height: 32),

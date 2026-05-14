@@ -30,6 +30,7 @@ class AuthRepository {
         email: email,
         password: password,
         data: {'full_name': name},
+        emailRedirectTo: kIsWeb ? null : 'io.supabase.pab://login-callback/',
       );
       return response;
     } on AuthException catch (e) {
